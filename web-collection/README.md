@@ -32,15 +32,44 @@
 只安装这个 `web-collection` skill：
 
 ```bash
-python3 ~/.codex/skills/.system/skill-installer/scripts/install-skill-from-github.py \
+python3 <skill-installer-path>/install-skill-from-github.py \
   --url https://github.com/yiming1001/skills-yiming/tree/main/web-collection
 ```
 
 默认安装目录：
 
 ```text
-~/.codex/skills/web-collection
+<skills-root>/web-collection
 ```
+
+其中：
+
+- `<skill-installer-path>` 表示你的 `install-skill-from-github.py` 所在目录
+- `<skills-root>` 表示你的 coding agent 本地 skills 根目录
+
+## 手动下载安装
+
+如果你想手动安装，也可以直接下载这个目录下的文件，并放到：
+
+```text
+<skills-root>/web-collection
+```
+
+至少需要保留这些内容：
+
+```text
+SKILL.md
+README.md
+scripts/run.sh
+scripts/export_preference.sh
+scripts/collect_and_export_loop.sh
+```
+
+注意：
+
+- `SKILL.md` 必须放在 `web-collection` 目录根部
+- `scripts/` 目录结构不要改
+- 下载后重启你的 coding agent 或对应客户端
 
 ## 安装前提
 

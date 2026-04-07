@@ -37,22 +37,55 @@ web-collection/README.md
 例如，只安装 `web-collection`：
 
 ```bash
-python3 ~/.codex/skills/.system/skill-installer/scripts/install-skill-from-github.py \
+python3 <skill-installer-path>/install-skill-from-github.py \
   --url https://github.com/yiming1001/skills-yiming/tree/main/web-collection
 ```
 
 安装结果默认会落到：
 
 ```text
-~/.codex/skills/web-collection
+<skills-root>/web-collection
 ```
 
 如果以后这个仓库里有更多 skills，也可以继续按同样方式安装单个目录：
 
 ```bash
-python3 ~/.codex/skills/.system/skill-installer/scripts/install-skill-from-github.py \
+python3 <skill-installer-path>/install-skill-from-github.py \
   --url https://github.com/yiming1001/skills-yiming/tree/main/<skill-directory>
 ```
+
+其中：
+
+- `<skill-installer-path>` 表示你的 `install-skill-from-github.py` 所在目录
+- `<skills-root>` 表示你的 coding agent 本地 skills 根目录
+
+## 手动下载安装
+
+如果你不想走安装脚本，也可以手动下载单个 skill 目录，再放进你本地的 skills 根目录。
+
+以 `web-collection` 为例：
+
+1. 从这个仓库下载 `web-collection/` 目录里的全部文件
+2. 在你的本地 skills 根目录下，新建目录：
+
+```text
+<skills-root>/web-collection
+```
+
+3. 把下面这些文件放进去：
+
+```text
+web-collection/SKILL.md
+web-collection/README.md
+web-collection/scripts/run.sh
+web-collection/scripts/export_preference.sh
+web-collection/scripts/collect_and_export_loop.sh
+```
+
+4. 保持目录结构不变，尤其是 `scripts/` 子目录
+5. 重启你的 coding agent 或对应客户端，让新 skill 生效
+
+手动安装时，最重要的是目标目录里必须保留 `SKILL.md`，并且相关脚本文件要和仓库里的相对路径一致。
 
 ## 安装前提
 
