@@ -44,9 +44,9 @@ python3 ~/.codex/skills/.system/skill-installer/scripts/install-skill-from-githu
 
 ## 安装前提
 
-- 已安装 Codex
-- 环境里存在系统 skill `skill-installer`
+- 你使用的 coding agent 环境支持 OpenAI Skills / `skill-installer` 这套安装方式
+- 环境里可以访问或调用 `install-skill-from-github.py`
 - 本机可以运行 `python3`
 - 本机可以访问 GitHub
 
-安装完成后，重启 Codex 让新 skill 生效。
+安装完成后，重启你的 coding agent 或对应客户端，让新 skill 生效。
