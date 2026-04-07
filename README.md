@@ -35,14 +35,49 @@
 - `web-collection/scripts/export_preference.sh`
 - `web-collection/scripts/collect_and_export_loop.sh`
 
-## 一键安装这个指定 skill
+## 安装这个 skill
 
-如果你已经在使用支持 `$skill-installer` 的 Codex / OpenClaw 环境，可以直接让代理执行下面这句：
+这里分成两种方式：
+
+### 方式 1：让代理帮你安装
+
+如果你已经在支持 `skill-installer` 的 Codex / OpenClaw 环境里，可以直接对代理说：
 
 ```text
-$skill-installer install https://github.com/yiming1001/skills-yiming/tree/main/web-collection
+请用 $skill-installer 安装这个 skill：
+https://github.com/yiming1001/skills-yiming/tree/main/web-collection
 ```
 
-或者使用对应的 GitHub 路径作为安装源，只安装这个 `web-collection` skill，而不是整个仓库。
+这是一句给代理看的指令，不是直接在终端里执行的 shell 命令。
 
-安装完成后，重启 Codex 让新 skill 生效。
+### 方式 2：你自己在终端里执行
+
+真正的安装命令是下面这句：
+
+```bash
+python3 ~/.codex/skills/.system/skill-installer/scripts/install-skill-from-github.py \
+  --url https://github.com/yiming1001/skills-yiming/tree/main/web-collection
+```
+
+这条命令会把 `web-collection` 安装到默认目录：
+
+```text
+~/.codex/skills/web-collection
+```
+
+### 安装前提
+
+- 你的环境里已经有 Codex，并且自带系统 skill `skill-installer`
+- 本机可以运行 `python3`
+- 本机可以访问 GitHub
+- 这是公开仓库，正常情况下不需要额外凭证
+
+如果你想手动指定安装目录，也可以这样：
+
+```bash
+python3 ~/.codex/skills/.system/skill-installer/scripts/install-skill-from-github.py \
+  --url https://github.com/yiming1001/skills-yiming/tree/main/web-collection \
+  --dest /your/project/skills
+```
+
+安装完成后，重启 Codex，让新 skill 生效。
