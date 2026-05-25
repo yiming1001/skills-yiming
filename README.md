@@ -30,6 +30,22 @@ web-collection/
 web-collection/README.md
 ```
 
+### lark-practice-doc
+
+飞书/Lark 课堂实战文档 skill，用于创建、改写、整理实战练习、课堂练习、实战营、Coze 插件/工作流/智能体教程等操作型文档。
+
+核心输出：
+
+- 严格四列表格任务单
+- 真实 Lark 截图区块
+- 参数速查、验证样例和排查清单
+
+目录：
+
+```text
+lark-practice-doc/
+```
+
 ### mx-auto
 
 本地 Runtime 自动化入口 skill，用于触发器、只读浏览器沙箱检查，以及本地脚本执行。
@@ -46,9 +62,45 @@ web-collection/README.md
 mx-auto/
 ```
 
+## 使用 npx 交互安装
+
+推荐使用 `npx` 按需安装：
+
+```bash
+npx skills-yiming
+```
+
+安装器会列出当前仓库中的三个 skills，你可以输入：
+
+- `all` 或直接回车：安装全部 skills
+- 单个编号：只安装一个 skill
+- 逗号分隔编号：安装多个 skills，例如 `1,3`
+
+默认安装位置：
+
+```text
+$CODEX_HOME/skills
+```
+
+如果没有设置 `CODEX_HOME`，会安装到：
+
+```text
+~/.codex/skills
+```
+
+安装时会覆盖目标目录下的同名 skill。安装完成后，请重启 Codex 或你的 coding agent 客户端，让新 skill 生效。
+
 ## 如何安装单个 skill
 
 下面这个命令只会安装你指定的子目录，不会把整个仓库作为一个 skill 安装。
+
+如果你的环境支持从 GitHub 子目录安装 skill，可以直接使用下面这些地址：
+
+```text
+https://github.com/yiming1001/skills-yiming/tree/main/web-collection
+https://github.com/yiming1001/skills-yiming/tree/main/lark-practice-doc
+https://github.com/yiming1001/skills-yiming/tree/main/mx-auto
+```
 
 例如，只安装 `web-collection`：
 
@@ -77,6 +129,13 @@ python3 <skill-installer-path>/install-skill-from-github.py \
   --url https://github.com/yiming1001/skills-yiming/tree/main/mx-auto
 ```
 
+例如，只安装 `lark-practice-doc`：
+
+```bash
+python3 <skill-installer-path>/install-skill-from-github.py \
+  --url https://github.com/yiming1001/skills-yiming/tree/main/lark-practice-doc
+```
+
 其中：
 
 - `<skill-installer-path>` 表示你的 `install-skill-from-github.py` 所在目录
@@ -103,9 +162,8 @@ python3 <skill-installer-path>/install-skill-from-github.py \
 
 ## 安装前提
 
-- 你使用的 coding agent 环境支持 OpenAI Skills / `skill-installer` 这套安装方式
-- 环境里可以访问或调用 `install-skill-from-github.py`
-- 本机可以运行 `python3`
-- 本机可以访问 GitHub
+- 使用 `npx skills-yiming` 时，本机需要 Node.js / npm，并且可以访问 npm registry
+- 使用 GitHub 子目录安装时，你的 coding agent 环境需要支持 OpenAI Skills / `skill-installer`
+- 手动安装时，只需要能下载 GitHub 仓库内容并写入本地 skills 根目录
 
 安装完成后，重启你的 coding agent 或对应客户端，让新 skill 生效。
