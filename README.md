@@ -30,6 +30,22 @@ web-collection/
 web-collection/README.md
 ```
 
+### mx-auto
+
+本地 Runtime 自动化入口 skill，用于触发器、只读浏览器沙箱检查，以及本地脚本执行。
+
+支持能力：
+
+- Triggers：列出和运行本地 Runtime triggers
+- Sandbox：只读查看 browser sandbox tabs / snapshot
+- Scripts：列出、查看和运行本地 App scripts
+
+目录：
+
+```text
+mx-auto/
+```
+
 ## 如何安装单个 skill
 
 下面这个命令只会安装你指定的子目录，不会把整个仓库作为一个 skill 安装。
@@ -52,6 +68,13 @@ python3 <skill-installer-path>/install-skill-from-github.py \
 ```bash
 python3 <skill-installer-path>/install-skill-from-github.py \
   --url https://github.com/yiming1001/skills-yiming/tree/main/<skill-directory>
+```
+
+例如，只安装 `mx-auto`：
+
+```bash
+python3 <skill-installer-path>/install-skill-from-github.py \
+  --url https://github.com/yiming1001/skills-yiming/tree/main/mx-auto
 ```
 
 其中：
