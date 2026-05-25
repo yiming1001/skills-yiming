@@ -18,7 +18,7 @@ When using a user-provided template, state briefly which template was used and w
 
 - **实操型 / Hands-On Practice:** `references/templates/hands-on-practice.md`
   - Use for classroom practice documents, hands-on tutorials, workflow operation guides, plugin/API setup guides, and task sheets.
-  - This template is adapted from `lark-practice-doc` and includes the strict four-column task table, screenshot handling, validation examples, parameter tables, and troubleshooting checklist.
+  - Includes the strict four-column task table, screenshot handling, validation examples, parameter tables, and troubleshooting checklist.
 - **决策型 / Decision Guide:** `references/templates/decision-guide.md`
   - Use when leaders, product owners, project managers, clients, or reviewers need to choose a direction.
 - **认知解释型 / Concept Guide:** `references/templates/concept-guide.md`

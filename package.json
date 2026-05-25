@@ -9,7 +9,6 @@
   "files": [
     "bin/install.js",
     "web-collection",
-    "lark-practice-doc",
     "mx-auto",
     "expression-engineering"
   ],

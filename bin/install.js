@@ -11,10 +11,6 @@ const skills = [
     description: "Browser plugin data collection via a local bridge",
   },
   {
-    name: "lark-practice-doc",
-    description: "Create classroom-style Feishu/Lark practice documents",
-  },
-  {
     name: "mx-auto",
     description: "Run local Runtime triggers, sandbox inspection, and scripts",
   },

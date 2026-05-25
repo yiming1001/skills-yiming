@@ -30,22 +30,6 @@ web-collection/
 web-collection/README.md
 ```
 
-### lark-practice-doc
-
-飞书/Lark 课堂实战文档 skill，用于创建、改写、整理实战练习、课堂练习、实战营、Coze 插件/工作流/智能体教程等操作型文档。
-
-核心输出：
-
-- 严格四列表格任务单
-- 真实 Lark 截图区块
-- 参数速查、验证样例和排查清单
-
-目录：
-
-```text
-lark-practice-doc/
-```
-
 ### mx-auto
 
 本地 Runtime 自动化入口 skill，用于触发器、只读浏览器沙箱检查，以及本地脚本执行。
@@ -115,7 +99,6 @@ $CODEX_HOME/skills
 
 ```text
 https://github.com/yiming1001/skills-yiming/tree/main/web-collection
-https://github.com/yiming1001/skills-yiming/tree/main/lark-practice-doc
 https://github.com/yiming1001/skills-yiming/tree/main/mx-auto
 https://github.com/yiming1001/skills-yiming/tree/main/expression-engineering
 ```
@@ -145,13 +128,6 @@ python3 <skill-installer-path>/install-skill-from-github.py \
 ```bash
 python3 <skill-installer-path>/install-skill-from-github.py \
   --url https://github.com/yiming1001/skills-yiming/tree/main/mx-auto
-```
-
-例如，只安装 `lark-practice-doc`：
-
-```bash
-python3 <skill-installer-path>/install-skill-from-github.py \
-  --url https://github.com/yiming1001/skills-yiming/tree/main/lark-practice-doc
 ```
 
 例如，只安装 `expression-engineering`：
