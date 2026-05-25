@@ -15,6 +15,7 @@ fi
 
 REFRESH_PROFILES="false"
 PROFILE=""
+ACCOUNT_NAME=""
 BASE_URL=""
 TOKEN=""
 APP_HOME=""
@@ -39,6 +40,7 @@ Actions:
 Options:
   --refresh                 Refresh profiles from Runtime and save them locally
   --profile <name>          Browser sandbox profile (default: browser-1)
+  --account <name>          Browser account sandbox name or alias from cached profiles
   --base-url <url>          Runtime browser endpoint or Runtime base URL
   --token <token>           Runtime management token
   --app-home <path>         Runtime state directory root
@@ -117,6 +119,51 @@ normalize_positive_integer() {
   local raw="${1:-}"
   [[ "$raw" =~ ^[0-9]+$ && "$raw" != "0" ]] || die "invalid positive integer: $raw"
   printf '%s\n' "$raw"
+}
+
+resolve_account_profile_id() {
+  local account_name="$1"
+  [[ -n "$account_name" ]] || return 0
+
+  local snapshot_json
+  snapshot_json="$(bash "$PREFERENCE_SCRIPT" get-browser-profiles 2>/dev/null || true)"
+  if [[ -z "$snapshot_json" ]]; then
+    die "browser profile cache is empty; run: bash scripts/run.sh sandbox profiles --refresh --format json"
+  fi
+
+  node -e '
+const snapshot = JSON.parse(process.argv[1]);
+const account = String(process.argv[2] || "").trim();
+const normalize = (value) => String(value || "").trim().toLowerCase();
+const wanted = normalize(account);
+const profiles = Array.isArray(snapshot?.profiles) ? snapshot.profiles : [];
+const matches = profiles.filter((profile) => {
+  const aliases = [
+    profile?.id,
+    profile?.name,
+    ...(Array.isArray(profile?.aliases) ? profile.aliases : []),
+  ].map(normalize).filter(Boolean);
+  return aliases.includes(wanted);
+});
+if (matches.length === 1) {
+  process.stdout.write(String(matches[0].id || ""));
+  process.exit(0);
+}
+if (matches.length === 0) {
+  console.error(`account sandbox not found: ${account}; refresh with: bash scripts/run.sh sandbox profiles --refresh --format json`);
+  process.exit(2);
+}
+console.error(JSON.stringify({
+  error: "multiple_account_sandbox_matches",
+  account,
+  matches: matches.map((profile) => ({
+    id: profile.id || "",
+    name: profile.name || "",
+    aliases: Array.isArray(profile.aliases) ? profile.aliases : [],
+  })),
+}, null, 2));
+process.exit(3);
+' "$snapshot_json" "$account_name"
 }
 
 discover_token() {
@@ -443,6 +490,10 @@ while [[ $# -gt 0 ]]; do
       PROFILE="${2:-}"
       shift 2
       ;;
+    --account)
+      ACCOUNT_NAME="${2:-}"
+      shift 2
+      ;;
     --base-url)
       BASE_URL="${2:-}"
       shift 2
@@ -539,6 +590,9 @@ if [[ "$ACTION" == "profiles" ]]; then
   exit 0
 fi
 
+if [[ -z "$PROFILE" && -n "$ACCOUNT_NAME" ]]; then
+  PROFILE="$(resolve_account_profile_id "$ACCOUNT_NAME")"
+fi
 PROFILE="${PROFILE:-$(pref_get defaultBrowserProfile)}"
 [[ -n "$PROFILE" ]] || PROFILE="$DEFAULT_PROFILE"
 TABS_JSON="$(bridge_post "$BASE_URL" "$TOKEN" "$(build_tabs_payload "$PROFILE")")"

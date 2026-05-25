@@ -73,8 +73,8 @@ Capability commands:
 bash {baseDir}/scripts/run.sh triggers list --format json
 bash {baseDir}/scripts/run.sh triggers run --trigger-name "小红书测试"
 bash {baseDir}/scripts/run.sh sandbox profiles --refresh --format json
-bash {baseDir}/scripts/run.sh sandbox tabs --format json
-bash {baseDir}/scripts/run.sh sandbox snapshot --url-contains dashboardV4 --url-not-contains /review
+bash {baseDir}/scripts/run.sh sandbox tabs --account "脱不花" --format json
+bash {baseDir}/scripts/run.sh sandbox snapshot --account "脱不花" --url-contains dashboardV4 --url-not-contains /review
 bash {baseDir}/scripts/run.sh scripts list --format json
 bash {baseDir}/scripts/run.sh scripts show xiaohongshu.note.search.v1.json --format json
 bash {baseDir}/scripts/run.sh scripts run xiaohongshu.note.search.v1.json --account "脱不花" --input-json '{"keyword":"美食探店"}' --wait true --format json

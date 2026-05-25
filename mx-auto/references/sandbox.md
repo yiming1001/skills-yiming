@@ -15,9 +15,9 @@ Use this reference when refreshing account sandbox profiles, inspecting existing
 ```bash
 bash {baseDir}/scripts/run.sh sandbox profiles
 bash {baseDir}/scripts/run.sh sandbox profiles --refresh --format json
-bash {baseDir}/scripts/run.sh sandbox tabs
+bash {baseDir}/scripts/run.sh sandbox tabs --account "脱不花"
 bash {baseDir}/scripts/run.sh sandbox tabs --profile browser-1 --format json
-bash {baseDir}/scripts/run.sh sandbox snapshot --target-id <targetId>
+bash {baseDir}/scripts/run.sh sandbox snapshot --account "脱不花" --target-id <targetId>
 bash {baseDir}/scripts/run.sh sandbox snapshot --url-contains dashboardV4 --url-not-contains /review
 ```
 
@@ -50,7 +50,8 @@ Snapshot:
 
 ## Target Resolution
 
-- Account names for scripts are resolved from cached profile `id`, `name`, or `aliases` using exact matching.
+- Account names for scripts and sandbox inspection are resolved from cached profile `id`, `name`, or `aliases` using exact matching.
+- Use `--account <name>` for human account names such as `脱不花`; use `--profile <id>` for explicit Runtime profile ids.
 - Refresh profiles only when the user asks to update/list account sandboxes; do not refresh on every script run.
 - `--target-id` wins when present.
 - Otherwise filter existing tabs by all `--url-contains` values and no `--url-not-contains` values.
