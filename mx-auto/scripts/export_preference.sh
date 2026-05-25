@@ -95,6 +95,9 @@ normalize_key() {
     scriptSnapshot)
       printf '%s\n' "scriptSnapshot"
       ;;
+    browserProfileSnapshot|browserProfiles)
+      printf '%s\n' "browserProfileSnapshot"
+      ;;
     "")
       printf '%s\n' ""
       ;;
@@ -133,7 +136,7 @@ validate_key_value() {
         exit 1
       }
       ;;
-    triggerSnapshot|scriptSnapshot)
+    triggerSnapshot|scriptSnapshot|browserProfileSnapshot)
       node -e '
 const parsed = JSON.parse(process.argv[1]);
 if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) process.exit(1);
@@ -191,7 +194,7 @@ let value = rawValue;
 if (rawValue === "true") value = true;
 else if (rawValue === "false") value = false;
 else if (/^[0-9]+$/.test(rawValue)) value = Number(rawValue);
-else if (key === "triggerSnapshot" || key === "scriptSnapshot") value = JSON.parse(rawValue);
+else if (key === "triggerSnapshot" || key === "scriptSnapshot" || key === "browserProfileSnapshot") value = JSON.parse(rawValue);
 
 data[key] = value;
 data.updatedAt = new Date().toISOString();
@@ -330,6 +333,9 @@ Usage:
   export_preference.sh set-trigger-snapshot <json>
   export_preference.sh get-trigger-snapshot
   export_preference.sh clear-trigger-snapshot
+  export_preference.sh set-browser-profiles <json>
+  export_preference.sh get-browser-profiles
+  export_preference.sh clear-browser-profiles
   export_preference.sh clear
 
 Supported keys:
@@ -350,6 +356,7 @@ Supported keys:
   defaultSandboxSnapshotMaxChars        integer
   triggerSnapshot                       JSON object
   scriptSnapshot                        JSON object
+  browserProfileSnapshot                JSON object
 EOF
 }
 
@@ -427,6 +434,21 @@ main() {
       ;;
     clear-script-snapshot)
       unset_value "scriptSnapshot" "$pref_path"
+      ;;
+    set-browser-profiles)
+      value="${2:-}"
+      [[ -n "$value" ]] || {
+        echo "set-browser-profiles requires <json>" >&2
+        exit 1
+      }
+      validate_key_value "browserProfileSnapshot" "$value"
+      write_value "browserProfileSnapshot" "$value" "$pref_path"
+      ;;
+    get-browser-profiles)
+      print_value "browserProfileSnapshot" "$pref_path"
+      ;;
+    clear-browser-profiles)
+      unset_value "browserProfileSnapshot" "$pref_path"
       ;;
     clear)
       rm -f "$pref_path"

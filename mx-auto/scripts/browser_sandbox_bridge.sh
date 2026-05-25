@@ -13,6 +13,7 @@ if [[ $# -gt 0 ]]; then
   shift
 fi
 
+REFRESH_PROFILES="false"
 PROFILE=""
 BASE_URL=""
 TOKEN=""
@@ -26,14 +27,17 @@ URL_NOT_CONTAINS=()
 usage() {
   cat <<'EOF'
 Usage:
+  run.sh profiles [options]
   run.sh tabs [options]
   run.sh snapshot [options]
 
 Actions:
+  profiles                  List cached browser account sandbox profiles
   tabs                      List already-open tabs in the browser sandbox
   snapshot                  Snapshot an existing tab by targetId or URL match
 
 Options:
+  --refresh                 Refresh profiles from Runtime and save them locally
   --profile <name>          Browser sandbox profile (default: browser-1)
   --base-url <url>          Runtime browser endpoint or Runtime base URL
   --token <token>           Runtime management token
@@ -184,6 +188,85 @@ bridge_post() {
     -H "Content-Type: application/json" \
     -d "$payload_json" \
     "$endpoint"
+}
+
+bridge_get() {
+  local endpoint="$1"
+  local token="$2"
+  curl -sS \
+    -H "Authorization: Bearer $token" \
+    "$endpoint"
+}
+
+normalize_profiles_snapshot() {
+  local raw_json="$1"
+  local source="$2"
+  node -e '
+const payload = JSON.parse(process.argv[1]);
+const source = process.argv[2] || "runtime";
+const bridge = payload?.bridge && typeof payload.bridge === "object" ? payload.bridge : payload;
+const profiles = Array.isArray(bridge?.profiles) ? bridge.profiles : [];
+const normalize = (value) => String(value || "").trim();
+const unique = (items) => [...new Set(items.map(normalize).filter(Boolean))];
+const normalized = profiles.map((profile) => {
+  const id = normalize(profile?.id);
+  const name = normalize(profile?.name);
+  const aliases = unique([
+    id,
+    name,
+    ...(Array.isArray(profile?.aliases) ? profile.aliases : []),
+  ]);
+  return {
+    id,
+    name,
+    aliases,
+    profileMode: normalize(profile?.profileMode),
+  };
+}).filter((profile) => profile.id);
+process.stdout.write(JSON.stringify({
+  loadedAt: new Date().toISOString(),
+  source,
+  activeProfileId: normalize(bridge?.activeProfileId),
+  activeProfileName: normalize(bridge?.activeProfileName),
+  profileCount: normalized.length,
+  profiles: normalized,
+}));
+' "$raw_json" "$source"
+}
+
+print_profiles() {
+  local snapshot_json="$1"
+  local format="$2"
+  node -e '
+const snapshot = process.argv[1] ? JSON.parse(process.argv[1]) : {};
+const format = process.argv[2];
+const profiles = Array.isArray(snapshot?.profiles) ? snapshot.profiles : [];
+if (format === "json") {
+  process.stdout.write(JSON.stringify({
+    ok: true,
+    action: "profiles",
+    loadedAt: snapshot.loadedAt || "",
+    activeProfileId: snapshot.activeProfileId || "",
+    activeProfileName: snapshot.activeProfileName || "",
+    profileCount: profiles.length,
+    profiles,
+  }, null, 2) + "\n");
+  process.exit(0);
+}
+const lines = [];
+lines.push(`账号沙箱（${profiles.length}）`);
+if (snapshot.loadedAt) lines.push(`缓存时间：${snapshot.loadedAt}`);
+for (const [index, profile] of profiles.entries()) {
+  lines.push(`${index + 1}. ${profile.name || profile.id}`);
+  lines.push(`id: ${profile.id || "-"}`);
+  const aliases = Array.isArray(profile.aliases) ? profile.aliases.filter(Boolean) : [];
+  if (aliases.length) lines.push(`aliases: ${aliases.join(", ")}`);
+}
+if (!profiles.length) {
+  lines.push("没有本地账号沙箱缓存；请运行 sandbox profiles --refresh。");
+}
+process.stdout.write(lines.join("\n") + "\n");
+' "$snapshot_json" "$format"
 }
 
 print_tabs() {
@@ -352,6 +435,10 @@ process.stdout.write(lines.join("\n") + "\n");
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
+    --refresh)
+      REFRESH_PROFILES="true"
+      shift 1
+      ;;
     --profile)
       PROFILE="${2:-}"
       shift 2
@@ -399,7 +486,7 @@ while [[ $# -gt 0 ]]; do
 done
 
 case "$ACTION" in
-  tabs|snapshot) ;;
+  profiles|tabs|snapshot) ;;
   ""|-h|--help)
     usage
     exit 0
@@ -414,8 +501,6 @@ case "$FORMAT" in
   *) die "invalid format: $FORMAT" ;;
 esac
 
-PROFILE="${PROFILE:-$(pref_get defaultBrowserProfile)}"
-[[ -n "$PROFILE" ]] || PROFILE="$DEFAULT_PROFILE"
 MAX_CHARS="${MAX_CHARS:-$(pref_get defaultSandboxSnapshotMaxChars)}"
 [[ -n "$MAX_CHARS" ]] || MAX_CHARS="$DEFAULT_MAX_CHARS"
 MAX_CHARS="$(normalize_positive_integer "$MAX_CHARS")"
@@ -432,11 +517,30 @@ if [[ "$BASE_URL" != */browser ]]; then
   BASE_URL="$(normalize_endpoint "$BASE_URL")"
 fi
 
+if [[ "$ACTION" == "profiles" && "$REFRESH_PROFILES" != "true" ]]; then
+  SNAPSHOT_JSON="$(bash "$PREFERENCE_SCRIPT" get-browser-profiles 2>/dev/null || true)"
+  [[ -n "$SNAPSHOT_JSON" ]] || SNAPSHOT_JSON='{"profiles":[]}'
+  print_profiles "$SNAPSHOT_JSON" "$FORMAT"
+  exit 0
+fi
+
 if [[ -z "$TOKEN" ]]; then
   TOKEN="$(discover_token "$APP_HOME")"
 fi
 [[ -n "$TOKEN" ]] || die "runtime management token not found; start with npm run dev:browser-sandbox or pass --token / --app-home explicitly"
 
+if [[ "$ACTION" == "profiles" ]]; then
+  BRIDGE_INFO_URL="${BASE_URL%/browser}/browser-bridge"
+  PROFILE_INFO_JSON="$(bridge_get "$BRIDGE_INFO_URL" "$TOKEN")"
+  node -e 'JSON.parse(process.argv[1]);' "$PROFILE_INFO_JSON" >/dev/null 2>&1 || die "browser bridge returned invalid JSON for profiles"
+  SNAPSHOT_JSON="$(normalize_profiles_snapshot "$PROFILE_INFO_JSON" "runtime")"
+  bash "$PREFERENCE_SCRIPT" set-browser-profiles "$SNAPSHOT_JSON" >/dev/null
+  print_profiles "$SNAPSHOT_JSON" "$FORMAT"
+  exit 0
+fi
+
+PROFILE="${PROFILE:-$(pref_get defaultBrowserProfile)}"
+[[ -n "$PROFILE" ]] || PROFILE="$DEFAULT_PROFILE"
 TABS_JSON="$(bridge_post "$BASE_URL" "$TOKEN" "$(build_tabs_payload "$PROFILE")")"
 node -e 'JSON.parse(process.argv[1]);' "$TABS_JSON" >/dev/null 2>&1 || die "browser bridge returned invalid JSON for tabs"
 

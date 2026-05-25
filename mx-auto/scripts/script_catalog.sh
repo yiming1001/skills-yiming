@@ -26,6 +26,7 @@ WAIT_VALUE=""
 LEASE_TTL_MS=""
 FORMAT="text"
 BROWSER_PROFILE_ID=""
+ACCOUNT_NAME=""
 EXPORT_TARGET=""
 AUTHORIZATION_ID=""
 BITABLE_EXPORT_MODE=""
@@ -47,6 +48,7 @@ Options:
   --format <text|json>     default: text
   --browser-profile-id <id>
                           Runtime browser sandbox/profile id
+  --account <name>         Browser account sandbox name or alias from cached profiles
   --export-target <target> file_csv|file_snapshot|external_bitable|personal_bitable
   --authorization-id <id>  Authorization id for personal_bitable export
   --bitable-export-mode <mode>
@@ -219,6 +221,51 @@ normalize_bitable_export_mode() {
     existing_table|new_table) printf '%s\n' "$raw" ;;
     *) die "invalid bitable export mode: $raw" ;;
   esac
+}
+
+resolve_account_profile_id() {
+  local account_name="$1"
+  [[ -n "$account_name" ]] || return 0
+
+  local snapshot_json
+  snapshot_json="$(bash "$PREFERENCE_SCRIPT" get-browser-profiles 2>/dev/null || true)"
+  if [[ -z "$snapshot_json" ]]; then
+    die "browser profile cache is empty; run: bash scripts/run.sh sandbox profiles --refresh --format json"
+  fi
+
+  node -e '
+const snapshot = JSON.parse(process.argv[1]);
+const account = String(process.argv[2] || "").trim();
+const normalize = (value) => String(value || "").trim().toLowerCase();
+const wanted = normalize(account);
+const profiles = Array.isArray(snapshot?.profiles) ? snapshot.profiles : [];
+const matches = profiles.filter((profile) => {
+  const aliases = [
+    profile?.id,
+    profile?.name,
+    ...(Array.isArray(profile?.aliases) ? profile.aliases : []),
+  ].map(normalize).filter(Boolean);
+  return aliases.includes(wanted);
+});
+if (matches.length === 1) {
+  process.stdout.write(String(matches[0].id || ""));
+  process.exit(0);
+}
+if (matches.length === 0) {
+  console.error(`account sandbox not found: ${account}; refresh with: bash scripts/run.sh sandbox profiles --refresh --format json`);
+  process.exit(2);
+}
+console.error(JSON.stringify({
+  error: "multiple_account_sandbox_matches",
+  account,
+  matches: matches.map((profile) => ({
+    id: profile.id || "",
+    name: profile.name || "",
+    aliases: Array.isArray(profile.aliases) ? profile.aliases : [],
+  })),
+}, null, 2));
+process.exit(3);
+' "$snapshot_json" "$account_name"
 }
 
 fetch_catalog() {
@@ -399,14 +446,17 @@ const buildParamPlan = (script, inputOverrides, useLastInput, runtimeOptions) =>
       reason: "date_scope",
     });
   }
+  requiredParams.push({
+    key: "accountSandbox",
+    label: "账号沙箱",
+    kind: "browser_profile",
+    source: runtimeOptions.browserProfileId ? "cli_or_account" : "",
+    value: runtimeOptions.browserProfileId || undefined,
+    satisfied: hasValue(runtimeOptions.browserProfileId),
+    reason: "account_sandbox",
+    runtime: true,
+  });
   defaultParams.push(
-    {
-      key: "browserProfileId",
-      source: runtimeOptions.browserProfileId ? "cli" : "runtime_or_preferences",
-      value: runtimeOptions.browserProfileId || undefined,
-      reason: "sandbox_default",
-      runtime: true,
-    },
     {
       key: "exportTarget",
       source: runtimeOptions.exportTarget ? "cli" : "script_or_runtime_default",
@@ -556,6 +606,10 @@ while [[ $# -gt 0 ]]; do
       BROWSER_PROFILE_ID="${2:-}"
       shift 2
       ;;
+    --account)
+      ACCOUNT_NAME="${2:-}"
+      shift 2
+      ;;
     --export-target)
       EXPORT_TARGET="${2:-}"
       shift 2
@@ -604,6 +658,12 @@ esac
 INPUT_JSON="$(validate_input_json "$INPUT_JSON")"
 EXPORT_TARGET="$(normalize_export_target "$EXPORT_TARGET")"
 BITABLE_EXPORT_MODE="$(normalize_bitable_export_mode "$BITABLE_EXPORT_MODE")"
+if [[ -z "$BROWSER_PROFILE_ID" && -n "$ACCOUNT_NAME" ]]; then
+  BROWSER_PROFILE_ID="$(resolve_account_profile_id "$ACCOUNT_NAME")"
+fi
+if [[ -n "$BROWSER_PROFILE_ID" && -n "$ACCOUNT_NAME" ]]; then
+  ACCOUNT_NAME=""
+fi
 
 APP_HOME="$(resolve_app_home "$APP_HOME")"
 LOCAL_BASE_URL="$(discover_local_base_url "$LOCAL_BASE_URL")"

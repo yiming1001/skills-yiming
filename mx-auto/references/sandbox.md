@@ -1,6 +1,6 @@
 # Sandbox Workflow
 
-Use this reference when inspecting existing browser sandbox tabs or snapshotting an existing tab.
+Use this reference when refreshing account sandbox profiles, inspecting existing browser sandbox tabs, or snapshotting an existing tab.
 
 ## Rules
 
@@ -13,6 +13,8 @@ Use this reference when inspecting existing browser sandbox tabs or snapshotting
 ## Commands
 
 ```bash
+bash {baseDir}/scripts/run.sh sandbox profiles
+bash {baseDir}/scripts/run.sh sandbox profiles --refresh --format json
 bash {baseDir}/scripts/run.sh sandbox tabs
 bash {baseDir}/scripts/run.sh sandbox tabs --profile browser-1 --format json
 bash {baseDir}/scripts/run.sh sandbox snapshot --target-id <targetId>
@@ -21,7 +23,13 @@ bash {baseDir}/scripts/run.sh sandbox snapshot --url-contains dashboardV4 --url-
 
 ## Runtime API
 
-Call `POST /browser` with Runtime admin auth.
+Call Runtime browser bridge with Runtime admin auth.
+
+Profiles:
+
+- cached list: read `browserProfileSnapshot` from mx-auto preferences.
+- refresh: call `GET /browser-bridge`, normalize `profiles[]`, and save `browserProfileSnapshot`.
+- saved fields: `id`, `name`, `aliases`, `profileMode`, `loadedAt`.
 
 Tabs:
 
@@ -42,6 +50,8 @@ Snapshot:
 
 ## Target Resolution
 
+- Account names for scripts are resolved from cached profile `id`, `name`, or `aliases` using exact matching.
+- Refresh profiles only when the user asks to update/list account sandboxes; do not refresh on every script run.
 - `--target-id` wins when present.
 - Otherwise filter existing tabs by all `--url-contains` values and no `--url-not-contains` values.
 - Zero matches is a clear no-match error.
@@ -49,5 +59,6 @@ Snapshot:
 
 ## Output
 
+- Profiles: account sandbox count, `id`, `name`, `aliases`, cache time.
 - Tabs: profile, tab count, targetId, title, URL.
 - Snapshot: profile, targetId, matched URL, text snapshot or extracted content.

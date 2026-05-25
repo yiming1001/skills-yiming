@@ -72,11 +72,12 @@ Capability commands:
 ```bash
 bash {baseDir}/scripts/run.sh triggers list --format json
 bash {baseDir}/scripts/run.sh triggers run --trigger-name "小红书测试"
+bash {baseDir}/scripts/run.sh sandbox profiles --refresh --format json
 bash {baseDir}/scripts/run.sh sandbox tabs --format json
 bash {baseDir}/scripts/run.sh sandbox snapshot --url-contains dashboardV4 --url-not-contains /review
 bash {baseDir}/scripts/run.sh scripts list --format json
 bash {baseDir}/scripts/run.sh scripts show xiaohongshu.note.search.v1.json --format json
-bash {baseDir}/scripts/run.sh scripts run xiaohongshu.note.search.v1.json --input-json '{"keyword":"美食探店"}' --wait true --format json
+bash {baseDir}/scripts/run.sh scripts run xiaohongshu.note.search.v1.json --account "脱不花" --input-json '{"keyword":"美食探店"}' --wait true --format json
 ```
 
 Legacy trigger commands remain supported:
@@ -90,5 +91,6 @@ bash {baseDir}/scripts/run.sh --trigger-name "小红书测试"
 
 - Prefer local Runtime auto-discovery before asking the user for paths, ports, or tokens.
 - Store only non-secret defaults such as `defaultAppHome` or `defaultLocalBaseUrl`.
+- Script execution must explicitly choose an account sandbox with `--account` or `--browser-profile-id`; do not rely on Runtime's default browser profile for business scripts.
 - Use exact trigger/script names for execution. Do not fuzzy-match names when running.
 - Sandbox operations are read-only; never navigate, click, type, or create tabs from this skill.

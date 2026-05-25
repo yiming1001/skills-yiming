@@ -59,7 +59,7 @@ Usage:
   run.sh triggers list [options]
   run.sh triggers run [options]
   run.sh triggers refresh [options]
-  run.sh sandbox tabs|snapshot [options]
+  run.sh sandbox profiles|tabs|snapshot [options]
   run.sh scripts list|show|run [options]
 
 Options:
