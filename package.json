@@ -1,6 +1,6 @@
 {
   "name": "skills-yiming",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "private": false,
   "description": "Install selected Codex skills from yiming's personal skills collection.",
   "bin": {
@@ -10,7 +10,8 @@
     "bin/install.js",
     "web-collection",
     "lark-practice-doc",
-    "mx-auto"
+    "mx-auto",
+    "expression-engineering"
   ],
   "license": "MIT"
 }

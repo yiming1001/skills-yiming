@@ -1,0 +1,4 @@
+interface:
+  display_name: "Expression Engineering"
+  short_description: "Clarify ideas and humanize Markdown"
+  default_prompt: "Use $expression-engineering to clarify this idea or Markdown draft, apply human writing rules, model the audience, and shape it into a Lark document plus a PPT-ready outline with visuals and speaker scripts."

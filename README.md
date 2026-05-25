@@ -62,6 +62,23 @@ lark-practice-doc/
 mx-auto/
 ```
 
+### expression-engineering
+
+表达工程 skill，用于把粗糙想法、口述材料、Markdown 草稿、规则/案例文档、飞书文档或 Wiki 转成面向具体受众的表达方案。
+
+支持能力：
+
+- 澄清表达对象、建模受众、选择表达策略
+- 生成 Lark 文档或 PPT-ready 页面大纲
+- 按人类写作规则润色 Markdown
+- 分析图示/配图机会并给出视觉方案
+
+目录：
+
+```text
+expression-engineering/
+```
+
 ## 使用 npx 交互安装
 
 推荐使用 `npx` 按需安装：
@@ -70,7 +87,7 @@ mx-auto/
 npx skills-yiming
 ```
 
-安装器会列出当前仓库中的三个 skills，你可以输入：
+安装器会列出当前仓库中的所有 skills，你可以输入：
 
 - `all` 或直接回车：安装全部 skills
 - 单个编号：只安装一个 skill
@@ -100,6 +117,7 @@ $CODEX_HOME/skills
 https://github.com/yiming1001/skills-yiming/tree/main/web-collection
 https://github.com/yiming1001/skills-yiming/tree/main/lark-practice-doc
 https://github.com/yiming1001/skills-yiming/tree/main/mx-auto
+https://github.com/yiming1001/skills-yiming/tree/main/expression-engineering
 ```
 
 例如，只安装 `web-collection`：
@@ -134,6 +152,13 @@ python3 <skill-installer-path>/install-skill-from-github.py \
 ```bash
 python3 <skill-installer-path>/install-skill-from-github.py \
   --url https://github.com/yiming1001/skills-yiming/tree/main/lark-practice-doc
+```
+
+例如，只安装 `expression-engineering`：
+
+```bash
+python3 <skill-installer-path>/install-skill-from-github.py \
+  --url https://github.com/yiming1001/skills-yiming/tree/main/expression-engineering
 ```
 
 其中：

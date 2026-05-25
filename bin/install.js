@@ -18,6 +18,10 @@ const skills = [
     name: "mx-auto",
     description: "Run local Runtime triggers, sandbox inspection, and scripts",
   },
+  {
+    name: "expression-engineering",
+    description: "Turn rough ideas and drafts into audience-aware communication",
+  },
 ];
 
 const repoRoot = path.resolve(__dirname, "..");
