@@ -86,26 +86,17 @@ python3 <skill-installer-path>/install-skill-from-github.py \
 
 如果你不想走安装脚本，也可以手动下载单个 skill 目录，再放进你本地的 skills 根目录。
 
-以 `web-collection` 为例：
+以 `<skill-directory>` 为例：
 
-1. 从这个仓库下载 `web-collection/` 目录里的全部文件
+1. 从这个仓库下载对应 skill 目录里的全部文件
 2. 在你的本地 skills 根目录下，新建目录：
 
 ```text
-<skills-root>/web-collection
+<skills-root>/<skill-directory>
 ```
 
-3. 把下面这些文件放进去：
-
-```text
-web-collection/SKILL.md
-web-collection/README.md
-web-collection/scripts/run.sh
-web-collection/scripts/export_preference.sh
-web-collection/scripts/collect_and_export_loop.sh
-```
-
-4. 保持目录结构不变，尤其是 `scripts/` 子目录
+3. 把该 skill 目录下的全部文件放进去
+4. 保持目录结构不变，尤其是 `scripts/`、`references/`、`agents/` 等子目录
 5. 重启你的 coding agent 或对应客户端，让新 skill 生效
 
 手动安装时，最重要的是目标目录里必须保留 `SKILL.md`，并且相关脚本文件要和仓库里的相对路径一致。

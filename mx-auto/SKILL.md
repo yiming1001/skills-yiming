@@ -1,21 +1,22 @@
 ---
 name: mx-auto
 description: Local Runtime automation entrypoint for App triggers, read-only browser sandbox inspection, and local script execution. Use when the user wants to list or run Runtime triggers, inspect existing browser sandbox tabs/snapshots, or list/show/run local App scripts.
+metadata:
+  short-description: Local Runtime automation router
 ---
 
 # mx-auto
 
-Use this skill as a lightweight router for local Runtime automation.
+Use this skill as a lightweight router for local Runtime automation. Keep the first read small: load only the reference file that matches the user's intent.
 
-## Capabilities
+## Intent Routing
 
-- **Triggers**: list and run callable App triggers.
-  - Read [references/triggers.md](references/triggers.md) when the user asks to list, refresh, inspect, or run triggers.
-- **Sandbox**: list existing browser sandbox tabs or snapshot an existing tab.
-  - Read [references/sandbox.md](references/sandbox.md) when the user asks about browser sandbox tabs, target IDs, snapshots, dashboard text, or URL-matched tab inspection.
-- **Scripts**: list, show, or run local scripts/examples.
-  - Read [references/scripts.md](references/scripts.md) when the user asks to list scripts, inspect a script schema, or run a script directly.
-- For complex mixed requests, read [references/learning-guide.md](references/learning-guide.md).
+- **Triggers**: list, refresh, inspect, or run callable App triggers. Read [references/triggers.md](references/triggers.md).
+- **Sandbox**: list existing browser sandbox tabs or snapshot an existing tab. Read [references/sandbox.md](references/sandbox.md).
+- **Scripts**: list, inspect, or run local App scripts/examples. Read [references/scripts.md](references/scripts.md).
+- **Mixed requests**: when a task combines multiple capabilities or needs troubleshooting across them, read [references/learning-guide.md](references/learning-guide.md).
+
+Do not bulk-load all references. Choose the smallest matching workflow, then run the bundled scripts instead of retyping request logic.
 
 ## Shared Runtime Defaults
 
@@ -66,23 +67,13 @@ Prefer the wrapper:
 bash {baseDir}/scripts/run.sh ...
 ```
 
-Triggers:
+Capability commands:
 
 ```bash
 bash {baseDir}/scripts/run.sh triggers list --format json
 bash {baseDir}/scripts/run.sh triggers run --trigger-name "小红书测试"
-```
-
-Sandbox:
-
-```bash
 bash {baseDir}/scripts/run.sh sandbox tabs --format json
 bash {baseDir}/scripts/run.sh sandbox snapshot --url-contains dashboardV4 --url-not-contains /review
-```
-
-Scripts:
-
-```bash
 bash {baseDir}/scripts/run.sh scripts list --format json
 bash {baseDir}/scripts/run.sh scripts show xiaohongshu.note.search.v1.json --format json
 bash {baseDir}/scripts/run.sh scripts run xiaohongshu.note.search.v1.json --input-json '{"keyword":"美食探店"}' --wait true --format json
@@ -94,3 +85,10 @@ Legacy trigger commands remain supported:
 bash {baseDir}/scripts/run.sh --list-triggers
 bash {baseDir}/scripts/run.sh --trigger-name "小红书测试"
 ```
+
+## Safety Rules
+
+- Prefer local Runtime auto-discovery before asking the user for paths, ports, or tokens.
+- Store only non-secret defaults such as `defaultAppHome` or `defaultLocalBaseUrl`.
+- Use exact trigger/script names for execution. Do not fuzzy-match names when running.
+- Sandbox operations are read-only; never navigate, click, type, or create tabs from this skill.
