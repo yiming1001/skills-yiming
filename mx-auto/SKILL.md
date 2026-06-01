@@ -59,6 +59,18 @@ Runtime admin token discovery:
 
 Never store or print the Runtime admin token value. App updates may rotate or recreate it; re-read the token file at runtime.
 
+Frequent scripts registry:
+
+`{resolved app home}/runtime/frequent-scripts.json`
+
+Helper:
+
+```bash
+bash {baseDir}/scripts/frequent_scripts.sh show
+bash {baseDir}/scripts/frequent_scripts.sh get
+bash {baseDir}/scripts/frequent_scripts.sh set '<json-array-or-registry>'
+```
+
 ## Entry Points
 
 Prefer the wrapper:
@@ -75,9 +87,12 @@ bash {baseDir}/scripts/run.sh triggers run --trigger-name "小红书测试"
 bash {baseDir}/scripts/run.sh sandbox profiles --refresh --format json
 bash {baseDir}/scripts/run.sh sandbox tabs --account "脱不花" --format json
 bash {baseDir}/scripts/run.sh sandbox snapshot --account "脱不花" --url-contains dashboardV4 --url-not-contains /review
-bash {baseDir}/scripts/run.sh scripts list --format json
-bash {baseDir}/scripts/run.sh scripts show xiaohongshu.note.search.v1.json --format json
-bash {baseDir}/scripts/run.sh scripts run xiaohongshu.note.search.v1.json --account "脱不花" --input-json '{"keyword":"美食探店"}' --wait true --format json
+bash {baseDir}/scripts/run.sh scripts list --format json --compact --cache-first
+bash {baseDir}/scripts/run.sh scripts list --format json --compact --cache-first --catalog
+bash {baseDir}/scripts/run.sh scripts show xiaohongshu/note.search.v1 --format json --compact --cache-first
+bash {baseDir}/scripts/run.sh scripts show douyin/video.search.v1 --format json --compact --cache-first --catalog
+bash {baseDir}/scripts/run.sh scripts show "小红书搜笔记" --format json --cache-first
+bash {baseDir}/scripts/run.sh scripts run "小红书搜笔记" --wait true --format json
 ```
 
 Legacy trigger commands remain supported:
@@ -91,6 +106,8 @@ bash {baseDir}/scripts/run.sh --trigger-name "小红书测试"
 
 - Prefer local Runtime auto-discovery before asking the user for paths, ports, or tokens.
 - Store only non-secret defaults such as `defaultAppHome` or `defaultLocalBaseUrl`.
+- For script routing, default to the frequent-script registry. Low-frequency scripts must be added to the registry before AI can run them.
+- Use `--catalog` only for discovery or add-to-frequent flows; do not use it as a direct execution path.
 - Script execution must explicitly choose an account sandbox with `--account` or `--browser-profile-id`; do not rely on Runtime's default browser profile for business scripts.
 - Use exact trigger/script names for execution. Do not fuzzy-match names when running.
 - Sandbox operations are read-only; never navigate, click, type, or create tabs from this skill.

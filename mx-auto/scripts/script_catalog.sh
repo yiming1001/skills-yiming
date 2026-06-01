@@ -3,6 +3,7 @@ set -euo pipefail
 
 SKILL_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 PREFERENCE_SCRIPT="$SKILL_DIR/scripts/export_preference.sh"
+FREQUENT_SCRIPT_HELPER="$SKILL_DIR/scripts/frequent_scripts.sh"
 LOCAL_LOOP_SCRIPT="$SKILL_DIR/scripts/local_dispatch_loop.sh"
 DEFAULT_RUNTIME_BASE_URLS=(
   "http://127.0.0.1:8877"
@@ -31,6 +32,11 @@ EXPORT_TARGET=""
 AUTHORIZATION_ID=""
 BITABLE_EXPORT_MODE=""
 USE_LAST_INPUT="false"
+COMPACT_OUTPUT="false"
+CACHE_FIRST="false"
+FULL_OUTPUT="false"
+FREQUENT_ONLY="false"
+CATALOG_MODE="false"
 
 usage() {
   cat <<'EOF'
@@ -54,6 +60,11 @@ Options:
   --bitable-export-mode <mode>
                           existing_table|new_table
   --use-last-input         Allow lastUsedInput to satisfy required business params
+  --compact                Emit compact, deduped AI-facing script views
+  --cache-first            Prefer cached scriptSnapshot for list/show; fallback to Runtime when missing
+  --full                   In JSON show mode, include the full script manifest
+  --catalog                Use the low-frequency full catalog for discovery/add flows
+  --frequent-only          Alias of the default high-frequency-only list mode
   -h, --help
 EOF
 }
@@ -230,7 +241,7 @@ resolve_account_profile_id() {
   local snapshot_json
   snapshot_json="$(bash "$PREFERENCE_SCRIPT" get-browser-profiles 2>/dev/null || true)"
   if [[ -z "$snapshot_json" ]]; then
-    die "browser profile cache is empty; run: bash scripts/run.sh sandbox profiles --refresh --format json"
+    die "browser profile cache is empty; refresh once with: bash $SKILL_DIR/scripts/run.sh sandbox profiles --refresh --format json"
   fi
 
   node -e '
@@ -252,7 +263,7 @@ if (matches.length === 1) {
   process.exit(0);
 }
 if (matches.length === 0) {
-  console.error(`account sandbox not found: ${account}; refresh with: bash scripts/run.sh sandbox profiles --refresh --format json`);
+  console.error(`account sandbox not found: ${account}; refresh once with: bash ${process.argv[3]}/scripts/run.sh sandbox profiles --refresh --format json`);
   process.exit(2);
 }
 console.error(JSON.stringify({
@@ -265,7 +276,92 @@ console.error(JSON.stringify({
   })),
 }, null, 2));
 process.exit(3);
-' "$snapshot_json" "$account_name"
+' "$snapshot_json" "$account_name" "$SKILL_DIR"
+}
+
+read_cached_catalog() {
+  local snapshot_json
+  snapshot_json="$(bash "$PREFERENCE_SCRIPT" get-script-snapshot 2>/dev/null || true)"
+  if [[ -z "$snapshot_json" ]]; then
+    return 1
+  fi
+  node -e '
+const snapshot = JSON.parse(process.argv[1]);
+const scripts = Array.isArray(snapshot?.scripts) ? snapshot.scripts : [];
+if (!scripts.length) process.exit(1);
+process.stdout.write(JSON.stringify({
+  ok: true,
+  source: "cache",
+  loadedAt: typeof snapshot.loadedAt === "string" ? snapshot.loadedAt : "",
+  examples: scripts,
+}));
+' "$snapshot_json"
+}
+
+read_frequent_scripts() {
+  local app_home="${1:-}"
+  local frequent_json
+  if [[ -n "$app_home" ]]; then
+    frequent_json="$(bash "$FREQUENT_SCRIPT_HELPER" --app-home "$app_home" get 2>/dev/null || true)"
+  else
+    frequent_json="$(bash "$FREQUENT_SCRIPT_HELPER" get 2>/dev/null || true)"
+  fi
+  if [[ -z "$frequent_json" ]]; then
+    printf '[]\n'
+    return 0
+  fi
+  node -e '
+const entries = JSON.parse(process.argv[1]);
+process.stdout.write(JSON.stringify(Array.isArray(entries) ? entries : []));
+' "$frequent_json"
+}
+
+resolve_frequent_target() {
+  local target_name="$1"
+  local frequent_json="$2"
+  node -e '
+const target = String(process.argv[1] || "").trim();
+const entries = JSON.parse(process.argv[2]);
+const normalize = (value) => String(value || "").trim().toLowerCase();
+const normalizedTarget = normalize(target);
+if (!normalizedTarget) process.exit(1);
+const active = Array.isArray(entries) ? entries.filter((entry) => entry && entry.enabled !== false) : [];
+const exactScript = active.find((entry) => String(entry.scriptName || "").trim() === target);
+if (exactScript) {
+  process.stdout.write(JSON.stringify({ matched: true, reason: "exact_script", entry: exactScript }));
+  process.exit(0);
+}
+const exactAliasMatches = active.filter((entry) => Array.isArray(entry.aliases) && entry.aliases.some((alias) => normalize(alias) === normalizedTarget));
+if (exactAliasMatches.length === 1) {
+  process.stdout.write(JSON.stringify({ matched: true, reason: "exact_alias", entry: exactAliasMatches[0] }));
+  process.exit(0);
+}
+if (exactAliasMatches.length > 1) {
+  process.stdout.write(JSON.stringify({
+    matched: false,
+    reason: "ambiguous_alias",
+    matches: exactAliasMatches.map((entry) => ({ scriptName: entry.scriptName || "", aliases: Array.isArray(entry.aliases) ? entry.aliases : [] })),
+  }));
+  process.exit(0);
+}
+const containsMatches = active.filter((entry) => Array.isArray(entry.aliases) && entry.aliases.some((alias) => {
+  const normalizedAlias = normalize(alias);
+  return normalizedAlias && (normalizedTarget.includes(normalizedAlias) || normalizedAlias.includes(normalizedTarget));
+}));
+if (containsMatches.length === 1) {
+  process.stdout.write(JSON.stringify({ matched: true, reason: "contains_alias", entry: containsMatches[0] }));
+  process.exit(0);
+}
+if (containsMatches.length > 1) {
+  process.stdout.write(JSON.stringify({
+    matched: false,
+    reason: "ambiguous_alias",
+    matches: containsMatches.map((entry) => ({ scriptName: entry.scriptName || "", aliases: Array.isArray(entry.aliases) ? entry.aliases : [] })),
+  }));
+  process.exit(0);
+}
+process.stdout.write(JSON.stringify({ matched: false, reason: "no_match" }));
+' "$target_name" "$frequent_json"
 }
 
 fetch_catalog() {
@@ -315,11 +411,70 @@ process.stdout.write(JSON.stringify({
 emit_list() {
   local raw_json="$1"
   local format="$2"
+  local compact="${3:-false}"
+  local frequent_json="${4:-[]}"
+  local frequent_only="${5:-false}"
   node -e '
 const payload = JSON.parse(process.argv[1]);
 const format = process.argv[2];
+const compact = process.argv[3] === "true";
+const frequentEntries = JSON.parse(process.argv[4] || "[]");
+const frequentOnly = process.argv[5] === "true";
 const scripts = Array.isArray(payload.examples) ? payload.examples : [];
-const normalized = scripts.map((script) => ({
+const scriptKey = (script) => String(script?.workflowId || script?.name || "");
+const preferScore = (script) => {
+  const name = String(script?.name || "");
+  let score = 0;
+  if (name.includes("/")) score += 20;
+  if (!name.endsWith(".json")) score += 10;
+  if (name.includes("recording.generated")) score -= 30;
+  return score;
+};
+const dedupe = (items) => {
+  const byKey = new Map();
+  for (const script of items) {
+    const key = scriptKey(script);
+    if (!key) continue;
+    const existing = byKey.get(key);
+    if (!existing || preferScore(script) > preferScore(existing)) byKey.set(key, script);
+  }
+  return [...byKey.values()];
+};
+const fieldKey = (field) => String(field?.key || field?.name || "").trim();
+const summarizeField = (field) => ({
+  key: fieldKey(field),
+  label: String(field?.label || field?.title || ""),
+  kind: String(field?.kind || field?.type || ""),
+  required: field?.required === true,
+});
+const toSummary = (script) => {
+  const schema = Array.isArray(script?.inputSchema) ? script.inputSchema : [];
+  const frequent = Array.isArray(frequentEntries)
+    ? frequentEntries.find((entry) =>
+      entry
+      && entry.enabled !== false
+      && (
+        String(entry.scriptName || "").trim() === String(script?.name || "").trim()
+        || String(entry.scriptName || "").trim() === String(script?.workflowId || "").trim()
+      ))
+    : null;
+  return {
+    name: String(script?.name || ""),
+    workflowId: String(script?.workflowId || ""),
+    displayName: String(script?.displayName || ""),
+    platform: String(script?.platformLabel || script?.platform || ""),
+    runner: String(script?.runner || ""),
+    description: String(script?.description || ""),
+    frequent: Boolean(frequent),
+    aliases: frequent && Array.isArray(frequent.aliases) ? frequent.aliases : [],
+    preferredAccount: frequent && typeof frequent.preferredAccount === "string" ? frequent.preferredAccount : "",
+    requiredParams: schema.filter((field) => field?.required === true).map(summarizeField).filter((field) => field.key),
+    defaultableParams: schema.filter((field) => field?.required !== true).map(summarizeField).filter((field) => field.key),
+    updatedAt: String(script?.updatedAt || ""),
+  };
+};
+const sourceScripts = compact ? dedupe(scripts) : scripts;
+let normalized = sourceScripts.map((script) => compact ? toSummary(script) : ({
   name: String(script?.name || ""),
   workflowId: String(script?.workflowId || ""),
   platform: String(script?.platformLabel || script?.platform || ""),
@@ -327,18 +482,38 @@ const normalized = scripts.map((script) => ({
   description: String(script?.description || ""),
   updatedAt: String(script?.updatedAt || ""),
 })).filter((script) => script.name);
+if (frequentOnly) {
+  normalized = normalized.filter((script) => script.frequent === true);
+}
 if (format === "json") {
-  process.stdout.write(JSON.stringify({ ok: true, mode: "scripts_list", scriptCount: normalized.length, scripts: normalized }, null, 2) + "\n");
+  process.stdout.write(JSON.stringify({
+    ok: true,
+    mode: compact ? "scripts_list_compact" : "scripts_list",
+    source: payload.source || "runtime",
+    loadedAt: payload.loadedAt || "",
+    scriptCount: normalized.length,
+    rawScriptCount: scripts.length,
+    deduped: compact,
+    frequentOnly,
+    scripts: normalized,
+  }, null, 2) + "\n");
   process.exit(0);
 }
-const lines = [`当前可用脚本（${normalized.length}）`];
+const lines = [`当前可用脚本（${normalized.length}${compact && scripts.length !== normalized.length ? `，已从 ${scripts.length} 去重` : ""}${frequentOnly ? "，仅高频" : ""}）`];
+if (payload.source === "cache" && payload.loadedAt) lines.push(`缓存时间：${payload.loadedAt}`);
 for (const [index, script] of normalized.entries()) {
   lines.push(`${index + 1}. ${script.name}`);
   lines.push(`平台：${script.platform || "-"}`);
   lines.push(`Runner：${script.runner || "-"}`);
+  if (compact && script.requiredParams?.length) {
+    lines.push(`必填：${script.requiredParams.map((field) => field.key).join(", ")}`);
+  }
+  if (compact && script.aliases?.length) {
+    lines.push(`别名：${script.aliases.join(", ")}`);
+  }
 }
 process.stdout.write(lines.join("\n") + "\n");
-' "$raw_json" "$format"
+' "$raw_json" "$format" "$compact" "$frequent_json" "$frequent_only"
 }
 
 emit_show() {
@@ -351,6 +526,9 @@ emit_show() {
   local export_target="${7:-}"
   local authorization_id="${8:-}"
   local bitable_export_mode="${9:-}"
+  local full_output="${10:-false}"
+  local frequent_json="${11:-[]}"
+  local catalog_mode="${12:-false}"
   node -e '
 const payload = JSON.parse(process.argv[1]);
 const scriptName = process.argv[2];
@@ -363,14 +541,70 @@ const runtimeOptions = {
   authorizationId: process.argv[8] || "",
   bitableExportMode: process.argv[9] || "",
 };
+const fullOutput = process.argv[10] === "true";
+const frequentEntries = JSON.parse(process.argv[11] || "[]");
+const catalogMode = process.argv[12] === "true";
 const scripts = Array.isArray(payload.examples) ? payload.examples : [];
-const script = scripts.find((item) => item?.name === scriptName);
+const normalize = (value) => String(value || "").trim().toLowerCase();
+const activeFrequent = Array.isArray(frequentEntries) ? frequentEntries.filter((entry) => entry && entry.enabled !== false) : [];
+let frequentMatch = null;
+const exactScript = scripts.find((item) => item?.name === scriptName) || scripts.find((item) => item?.workflowId === scriptName);
+const normalizedTarget = normalize(scriptName);
+const exitAmbiguous = (matches) => {
+  console.error(JSON.stringify({
+    error: "ambiguous_frequent_alias",
+    target: scriptName,
+    matches: matches.map((entry) => ({ scriptName: entry.scriptName || "", aliases: Array.isArray(entry.aliases) ? entry.aliases : [] })),
+  }, null, 2));
+  process.exit(3);
+};
+const exactFrequentScriptMatches = activeFrequent.filter((entry) => normalize(entry.scriptName) === normalizedTarget);
+if (exactFrequentScriptMatches.length > 1) {
+  exitAmbiguous(exactFrequentScriptMatches);
+}
+if (exactFrequentScriptMatches.length === 1) {
+  frequentMatch = { reason: "exact_script", entry: exactFrequentScriptMatches[0] };
+} else {
+  const exactAliasMatches = activeFrequent.filter((entry) => Array.isArray(entry.aliases) && entry.aliases.some((alias) => normalize(alias) === normalizedTarget));
+  if (exactAliasMatches.length === 1) {
+    frequentMatch = { reason: "exact_alias", entry: exactAliasMatches[0] };
+  } else if (exactAliasMatches.length > 1) {
+    exitAmbiguous(exactAliasMatches);
+  } else {
+    const containsMatches = activeFrequent.filter((entry) => Array.isArray(entry.aliases) && entry.aliases.some((alias) => {
+      const normalizedAlias = normalize(alias);
+      return normalizedAlias && (normalizedTarget.includes(normalizedAlias) || normalizedAlias.includes(normalizedTarget));
+    }));
+    if (containsMatches.length === 1) {
+      frequentMatch = { reason: "contains_alias", entry: containsMatches[0] };
+    } else if (containsMatches.length > 1) {
+      exitAmbiguous(containsMatches);
+    }
+  }
+}
+if (!catalogMode && !frequentMatch) {
+  console.error(`script is not in the frequent registry: ${scriptName}; 请先添加到高频脚本区后再运行`);
+  process.exit(4);
+}
+const resolvedScriptName = catalogMode
+  ? (exactScript ? String(exactScript.name || "") : String(frequentMatch?.entry?.scriptName || ""))
+  : String(frequentMatch?.entry?.scriptName || "");
+const script = scripts.find((item) => item?.name === resolvedScriptName)
+  || scripts.find((item) => item?.workflowId === resolvedScriptName);
 if (!script) {
   const names = scripts.map((item) => item?.name).filter(Boolean);
   console.error(`script not found: ${scriptName}${names.length ? `; available scripts: ${names.join(", ")}` : ""}`);
   process.exit(2);
 }
-const inputOverrides = inputRaw ? JSON.parse(inputRaw) : {};
+const frequentDefaultInput = frequentMatch?.entry?.defaultInput && typeof frequentMatch.entry.defaultInput === "object" && !Array.isArray(frequentMatch.entry.defaultInput)
+  ? frequentMatch.entry.defaultInput
+  : {};
+const explicitInput = inputRaw ? JSON.parse(inputRaw) : {};
+const inputOverrides = { ...frequentDefaultInput, ...explicitInput };
+const effectiveRuntimeOptions = {
+  ...runtimeOptions,
+  browserProfileId: runtimeOptions.browserProfileId || String(frequentMatch?.entry?.preferredAccount || ""),
+};
 const buildParamPlan = (script, inputOverrides, useLastInput, runtimeOptions) => {
   const schema = Array.isArray(script.inputSchema) ? script.inputSchema : [];
   const defaults = script.inputDefaults && typeof script.inputDefaults === "object" && !Array.isArray(script.inputDefaults) ? script.inputDefaults : {};
@@ -409,6 +643,7 @@ const buildParamPlan = (script, inputOverrides, useLastInput, runtimeOptions) =>
     if (hasValue(inputOverrides[key])) return { source: "inputOverrides", value: inputOverrides[key] };
     if (useLastInput && hasValue(lastUsed[key])) return { source: "lastUsedInput", value: lastUsed[key] };
     if (hasOwn(defaults, key)) return { source: "inputDefaults", value: defaults[key] };
+    if (hasValue(lastUsed[key])) return { source: "lastUsedInputDefault", value: lastUsed[key] };
     return { source: "", value: undefined };
   };
   for (const [key, field] of fieldMap.entries()) {
@@ -495,14 +730,52 @@ const buildParamPlan = (script, inputOverrides, useLastInput, runtimeOptions) =>
     .map((param) => param.key))];
   return { requiredParams, defaultParams, missingRequiredParams };
 };
-const paramPlan = buildParamPlan(script, inputOverrides, useLastInput, runtimeOptions);
+const paramPlan = buildParamPlan(script, inputOverrides, useLastInput, effectiveRuntimeOptions);
 if (format === "json") {
-  process.stdout.write(JSON.stringify({ ok: true, mode: "scripts_show", script, paramPlan }, null, 2) + "\n");
+  const schema = Array.isArray(script.inputSchema) ? script.inputSchema : [];
+  const summarizeField = (field) => ({
+    key: String(field?.key || field?.name || ""),
+    label: String(field?.label || field?.title || ""),
+    kind: String(field?.kind || field?.type || ""),
+    required: field?.required === true,
+  });
+  const scriptSummary = {
+    name: String(script.name || ""),
+    workflowId: String(script.workflowId || ""),
+    displayName: String(script.displayName || ""),
+    platform: String(script.platformLabel || script.platform || ""),
+    runner: String(script.runner || ""),
+    description: String(script.description || ""),
+    requiredParams: schema.filter((field) => field?.required === true).map(summarizeField).filter((field) => field.key),
+    defaultableParams: schema.filter((field) => field?.required !== true).map(summarizeField).filter((field) => field.key),
+    inputDefaults: script.inputDefaults && typeof script.inputDefaults === "object" && !Array.isArray(script.inputDefaults) ? script.inputDefaults : {},
+    hasLastUsedInput: script.lastUsedInput && typeof script.lastUsedInput === "object" && !Array.isArray(script.lastUsedInput) && Object.keys(script.lastUsedInput).length > 0,
+    exportEnabled: script.exportEnabled === true,
+    updatedAt: String(script.updatedAt || ""),
+  };
+  const response = {
+    ok: true,
+    mode: fullOutput ? "scripts_show_full" : "scripts_show",
+    source: payload.source || "runtime",
+    loadedAt: payload.loadedAt || "",
+    scriptSummary,
+    resolvedTarget: {
+      requested: scriptName,
+      scriptName: resolvedScriptName,
+      frequentMatched: Boolean(frequentMatch),
+      matchReason: frequentMatch?.reason || (exactScript ? "exact_script" : ""),
+      preferredAccount: String(frequentMatch?.entry?.preferredAccount || ""),
+    },
+    paramPlan,
+  };
+  if (fullOutput) response.script = script;
+  process.stdout.write(JSON.stringify(response, null, 2) + "\n");
   process.exit(0);
 }
 const schema = Array.isArray(script.inputSchema) ? script.inputSchema : [];
 const lines = [];
 lines.push(`脚本：${script.name}`);
+if (frequentMatch) lines.push(`高频命中：${frequentMatch.reason}`);
 lines.push(`Workflow：${script.workflowId || "-"}`);
 lines.push(`平台：${script.platformLabel || script.platform || "-"}`);
 lines.push(`Runner：${script.runner || "-"}`);
@@ -531,7 +804,7 @@ if (paramPlan.missingRequiredParams.length) {
   lines.push(`缺失必填参数：${paramPlan.missingRequiredParams.join(", ")}`);
 }
 process.stdout.write(lines.join("\n") + "\n");
-' "$raw_json" "$script_name" "$format" "$input_json" "$use_last_input" "$browser_profile_id" "$export_target" "$authorization_id" "$bitable_export_mode"
+' "$raw_json" "$script_name" "$format" "$input_json" "$use_last_input" "$browser_profile_id" "$export_target" "$authorization_id" "$bitable_export_mode" "$full_output" "$frequent_json" "$catalog_mode"
 }
 
 build_run_payload() {
@@ -541,6 +814,9 @@ build_run_payload() {
   local export_target="$4"
   local authorization_id="$5"
   local bitable_export_mode="$6"
+  local raw_json="${7:-}"
+  local use_last_input="${8:-false}"
+  local frequent_json="${9:-[]}"
   node -e '
 const name = process.argv[1];
 const inputRaw = process.argv[2];
@@ -548,14 +824,72 @@ const browserProfileId = process.argv[3];
 const exportTarget = process.argv[4];
 const authorizationId = process.argv[5];
 const bitableExportMode = process.argv[6];
-const payload = { name };
-if (inputRaw) payload.inputOverrides = JSON.parse(inputRaw);
-if (browserProfileId) payload.browserProfileId = browserProfileId;
+const catalogRaw = process.argv[7] || "";
+const useLastInput = process.argv[8] === "true";
+const frequentEntries = JSON.parse(process.argv[9] || "[]");
+const payload = {};
+const explicitInput = inputRaw ? JSON.parse(inputRaw) : {};
+const normalize = (value) => String(value || "").trim().toLowerCase();
+let requestedName = name;
+let resolvedName = name;
+let frequentMatch = null;
+const activeFrequent = Array.isArray(frequentEntries) ? frequentEntries.filter((entry) => entry && entry.enabled !== false) : [];
+const tryResolveFrequent = () => {
+  const normalizedTarget = normalize(name);
+  const exactScriptMatches = activeFrequent.filter((entry) => normalize(entry.scriptName) === normalizedTarget);
+  if (exactScriptMatches.length === 1) return exactScriptMatches[0];
+  if (exactScriptMatches.length > 1) throw new Error(`ambiguous frequent script: ${name}`);
+  const exactAliasMatches = activeFrequent.filter((entry) => Array.isArray(entry.aliases) && entry.aliases.some((alias) => normalize(alias) === normalizedTarget));
+  if (exactAliasMatches.length === 1) return exactAliasMatches[0];
+  if (exactAliasMatches.length > 1) throw new Error(`ambiguous frequent alias: ${name}`);
+  const containsMatches = activeFrequent.filter((entry) => Array.isArray(entry.aliases) && entry.aliases.some((alias) => {
+    const normalizedAlias = normalize(alias);
+    return normalizedAlias && (normalizedTarget.includes(normalizedAlias) || normalizedAlias.includes(normalizedTarget));
+  }));
+  if (containsMatches.length === 1) return containsMatches[0];
+  if (containsMatches.length > 1) throw new Error(`ambiguous frequent alias: ${name}`);
+  return null;
+};
+let frequentDefaultInput = {};
+let inputOverrides = { ...explicitInput };
+let defaultInput = {};
+if (catalogRaw) {
+  const catalog = JSON.parse(catalogRaw);
+  const scripts = Array.isArray(catalog.examples) ? catalog.examples : [];
+  frequentMatch = tryResolveFrequent();
+  if (!frequentMatch) throw new Error(`script is not in the frequent registry: ${name}; 请先添加到高频脚本区后再运行`);
+  resolvedName = String(frequentMatch.scriptName || "").trim();
+  let script = scripts.find((item) => item?.name === resolvedName) || scripts.find((item) => item?.workflowId === resolvedName);
+  frequentDefaultInput = frequentMatch.defaultInput && typeof frequentMatch.defaultInput === "object" && !Array.isArray(frequentMatch.defaultInput)
+    ? frequentMatch.defaultInput
+    : {};
+  if (!script) throw new Error(`script not found: ${resolvedName}`);
+  const defaults = script?.inputDefaults && typeof script.inputDefaults === "object" && !Array.isArray(script.inputDefaults)
+    ? script.inputDefaults
+    : {};
+  defaultInput = defaults;
+  payload.name = String(script.name || resolvedName || name);
+  inputOverrides = { ...defaultInput, ...frequentDefaultInput, ...inputOverrides };
+}
+if (useLastInput && catalogRaw) {
+  const catalog = JSON.parse(catalogRaw);
+  const scripts = Array.isArray(catalog.examples) ? catalog.examples : [];
+  const script = scripts.find((item) => item?.name === (payload.name || resolvedName || name)) || scripts.find((item) => item?.workflowId === (payload.name || resolvedName || name));
+  const lastUsed = script?.lastUsedInput && typeof script.lastUsedInput === "object" && !Array.isArray(script.lastUsedInput)
+    ? script.lastUsedInput
+    : {};
+  inputOverrides = { ...defaultInput, ...frequentDefaultInput, ...lastUsed, ...explicitInput };
+}
+if (!payload.name) payload.name = resolvedName || requestedName;
+if (Object.keys(inputOverrides).length) payload.inputOverrides = inputOverrides;
+const effectiveBrowserProfileId = browserProfileId || String(frequentMatch?.preferredAccount || "");
+if (effectiveBrowserProfileId) payload.browserProfileId = effectiveBrowserProfileId;
 if (exportTarget) payload.exportTarget = exportTarget;
 if (authorizationId) payload.authorizationId = authorizationId;
 if (bitableExportMode) payload.bitableExportMode = bitableExportMode;
+payload.source = "openclaw";
 process.stdout.write(JSON.stringify(payload));
-' "$script_name" "$input_json" "$browser_profile_id" "$export_target" "$authorization_id" "$bitable_export_mode"
+' "$script_name" "$input_json" "$browser_profile_id" "$export_target" "$authorization_id" "$bitable_export_mode" "$raw_json" "$use_last_input" "$frequent_json"
 }
 
 missing_required_params() {
@@ -567,8 +901,9 @@ missing_required_params() {
   local export_target="$6"
   local authorization_id="$7"
   local bitable_export_mode="$8"
+  local frequent_json="${9:-[]}"
   local show_json
-  show_json="$(emit_show "$raw_json" "$script_name" "json" "$input_json" "$use_last_input" "$browser_profile_id" "$export_target" "$authorization_id" "$bitable_export_mode")"
+  show_json="$(emit_show "$raw_json" "$script_name" "json" "$input_json" "$use_last_input" "$browser_profile_id" "$export_target" "$authorization_id" "$bitable_export_mode" "false" "$frequent_json")"
   node -e '
 const show = JSON.parse(process.argv[1]);
 const missing = Array.isArray(show?.paramPlan?.missingRequiredParams) ? show.paramPlan.missingRequiredParams : [];
@@ -626,6 +961,27 @@ while [[ $# -gt 0 ]]; do
       USE_LAST_INPUT="true"
       shift 1
       ;;
+    --compact)
+      COMPACT_OUTPUT="true"
+      shift 1
+      ;;
+    --cache-first)
+      CACHE_FIRST="true"
+      shift 1
+      ;;
+    --full)
+      FULL_OUTPUT="true"
+      shift 1
+      ;;
+    --catalog)
+      CATALOG_MODE="true"
+      shift 1
+      ;;
+    --frequent-only)
+      FREQUENT_ONLY="true"
+      COMPACT_OUTPUT="true"
+      shift 1
+      ;;
     -h|--help)
       usage
       exit 0
@@ -666,28 +1022,72 @@ if [[ -n "$BROWSER_PROFILE_ID" && -n "$ACCOUNT_NAME" ]]; then
 fi
 
 APP_HOME="$(resolve_app_home "$APP_HOME")"
-LOCAL_BASE_URL="$(discover_local_base_url "$LOCAL_BASE_URL")"
-TOKEN="$(discover_runtime_admin_token "$APP_HOME")"
-[[ -n "$TOKEN" ]] || die "runtime admin token is missing; set MX_APP_RUNTIME_ADMIN_TOKEN or point --app-home to a Runtime state dir"
+FREQUENT_SCRIPTS_JSON="$(read_frequent_scripts "$APP_HOME")"
 
-CATALOG_JSON="$(fetch_catalog "$LOCAL_BASE_URL" "$TOKEN")"
-node -e 'JSON.parse(process.argv[1]);' "$CATALOG_JSON" >/dev/null 2>&1 || die "script catalog returned invalid JSON"
-persist_script_snapshot "$CATALOG_JSON"
+if [[ "$ACTION" == "run" && "$CATALOG_MODE" == "true" ]]; then
+  die "scripts run does not support --catalog; add the script to the frequent registry first"
+fi
+
+CATALOG_JSON=""
+CATALOG_SOURCE=""
+if [[ "$ACTION" != "run" && "$CACHE_FIRST" == "true" ]]; then
+  CATALOG_JSON="$(read_cached_catalog 2>/dev/null || true)"
+  if [[ -n "$CATALOG_JSON" ]]; then
+    CATALOG_SOURCE="cache"
+  fi
+fi
+
+if [[ -z "$CATALOG_JSON" ]]; then
+  APP_HOME="$(resolve_app_home "$APP_HOME")"
+  LOCAL_BASE_URL="$(discover_local_base_url "$LOCAL_BASE_URL")"
+  TOKEN="$(discover_runtime_admin_token "$APP_HOME")"
+  [[ -n "$TOKEN" ]] || {
+    if [[ "$ACTION" != "run" ]]; then
+      CATALOG_JSON="$(read_cached_catalog 2>/dev/null || true)"
+      if [[ -n "$CATALOG_JSON" ]]; then
+        CATALOG_SOURCE="cache"
+      else
+        die "runtime admin token is missing and no scriptSnapshot cache is available; start Runtime or point --app-home to a Runtime state dir"
+      fi
+    else
+      die "runtime admin token is missing; set MX_APP_RUNTIME_ADMIN_TOKEN or point --app-home to a Runtime state dir"
+    fi
+  }
+  if [[ -z "$CATALOG_JSON" ]]; then
+    if CATALOG_JSON="$(fetch_catalog "$LOCAL_BASE_URL" "$TOKEN" 2>/dev/null)"; then
+      node -e 'JSON.parse(process.argv[1]);' "$CATALOG_JSON" >/dev/null 2>&1 || die "script catalog returned invalid JSON"
+      persist_script_snapshot "$CATALOG_JSON"
+      CATALOG_SOURCE="runtime"
+    else
+      CATALOG_JSON="$(read_cached_catalog 2>/dev/null || true)"
+      if [[ -n "$CATALOG_JSON" ]]; then
+        CATALOG_SOURCE="cache"
+      elif [[ "$ACTION" != "run" ]]; then
+        die "script catalog is unavailable and no scriptSnapshot cache exists"
+      else
+        die "script catalog is unavailable; Runtime must be reachable before running scripts"
+      fi
+    fi
+  fi
+fi
 
 if [[ "$ACTION" == "list" ]]; then
-  emit_list "$CATALOG_JSON" "$FORMAT"
+  if [[ "$CATALOG_MODE" != "true" ]]; then
+    FREQUENT_ONLY="true"
+  fi
+  emit_list "$CATALOG_JSON" "$FORMAT" "$COMPACT_OUTPUT" "$FREQUENT_SCRIPTS_JSON" "$FREQUENT_ONLY"
   exit 0
 fi
 
 [[ -n "$SCRIPT_NAME" ]] || die "$ACTION requires <script-name>"
 
 if [[ "$ACTION" == "show" ]]; then
-  emit_show "$CATALOG_JSON" "$SCRIPT_NAME" "$FORMAT" "$INPUT_JSON" "$USE_LAST_INPUT" "$BROWSER_PROFILE_ID" "$EXPORT_TARGET" "$AUTHORIZATION_ID" "$BITABLE_EXPORT_MODE"
+  emit_show "$CATALOG_JSON" "$SCRIPT_NAME" "$FORMAT" "$INPUT_JSON" "$USE_LAST_INPUT" "$BROWSER_PROFILE_ID" "$EXPORT_TARGET" "$AUTHORIZATION_ID" "$BITABLE_EXPORT_MODE" "$FULL_OUTPUT" "$FREQUENT_SCRIPTS_JSON" "$CATALOG_MODE"
   exit 0
 fi
 
-emit_show "$CATALOG_JSON" "$SCRIPT_NAME" "json" "$INPUT_JSON" "$USE_LAST_INPUT" "$BROWSER_PROFILE_ID" "$EXPORT_TARGET" "$AUTHORIZATION_ID" "$BITABLE_EXPORT_MODE" >/dev/null
-MISSING_REQUIRED="$(missing_required_params "$CATALOG_JSON" "$SCRIPT_NAME" "$INPUT_JSON" "$USE_LAST_INPUT" "$BROWSER_PROFILE_ID" "$EXPORT_TARGET" "$AUTHORIZATION_ID" "$BITABLE_EXPORT_MODE")"
+emit_show "$CATALOG_JSON" "$SCRIPT_NAME" "json" "$INPUT_JSON" "$USE_LAST_INPUT" "$BROWSER_PROFILE_ID" "$EXPORT_TARGET" "$AUTHORIZATION_ID" "$BITABLE_EXPORT_MODE" "false" "$FREQUENT_SCRIPTS_JSON" "false" >/dev/null
+MISSING_REQUIRED="$(missing_required_params "$CATALOG_JSON" "$SCRIPT_NAME" "$INPUT_JSON" "$USE_LAST_INPUT" "$BROWSER_PROFILE_ID" "$EXPORT_TARGET" "$AUTHORIZATION_ID" "$BITABLE_EXPORT_MODE" "$FREQUENT_SCRIPTS_JSON")"
 if [[ -n "$MISSING_REQUIRED" ]]; then
   die "missing required script params: $MISSING_REQUIRED"
 fi
@@ -695,7 +1095,7 @@ WAIT_VALUE="$(normalize_bool "${WAIT_VALUE:-$(pref_get defaultWait)}")"
 LEASE_TTL_MS="$(normalize_positive_integer "${LEASE_TTL_MS:-$(pref_get defaultLeaseTtlMs)}")"
 [[ -n "$WAIT_VALUE" ]] || WAIT_VALUE="true"
 [[ -n "$LEASE_TTL_MS" ]] || LEASE_TTL_MS="60000"
-PAYLOAD_JSON="$(build_run_payload "$SCRIPT_NAME" "$INPUT_JSON" "$BROWSER_PROFILE_ID" "$EXPORT_TARGET" "$AUTHORIZATION_ID" "$BITABLE_EXPORT_MODE")"
+PAYLOAD_JSON="$(build_run_payload "$SCRIPT_NAME" "$INPUT_JSON" "$BROWSER_PROFILE_ID" "$EXPORT_TARGET" "$AUTHORIZATION_ID" "$BITABLE_EXPORT_MODE" "$CATALOG_JSON" "$USE_LAST_INPUT" "$FREQUENT_SCRIPTS_JSON")"
 
 exec bash "$LOCAL_LOOP_SCRIPT" \
   --target script.run \

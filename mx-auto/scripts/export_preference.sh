@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+FREQUENT_SCRIPT_HELPER="${SCRIPT_DIR}/frequent_scripts.sh"
+
 resolve_state_dir() {
   if [[ -n "${OPENCLAW_STATE_DIR:-}" ]]; then
     printf '%s\n' "$OPENCLAW_STATE_DIR"
@@ -95,6 +98,9 @@ normalize_key() {
     scriptSnapshot)
       printf '%s\n' "scriptSnapshot"
       ;;
+    frequentScripts)
+      printf '%s\n' "frequentScripts"
+      ;;
     browserProfileSnapshot|browserProfiles)
       printf '%s\n' "browserProfileSnapshot"
       ;;
@@ -142,6 +148,31 @@ const parsed = JSON.parse(process.argv[1]);
 if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) process.exit(1);
 ' "$value" >/dev/null 2>&1 || {
         echo "$key must be a JSON object" >&2
+        exit 1
+      }
+      ;;
+    frequentScripts)
+      node -e '
+const entries = JSON.parse(process.argv[1]);
+if (!Array.isArray(entries)) process.exit(1);
+const normalize = (value) => String(value || "").trim().toLowerCase();
+const seenAliases = new Map();
+for (const [index, entry] of entries.entries()) {
+  if (!entry || typeof entry !== "object" || Array.isArray(entry)) process.exit(2);
+  const scriptName = String(entry.scriptName || "").trim();
+  if (!scriptName) process.exit(3);
+  const aliases = Array.isArray(entry.aliases) ? entry.aliases.map((value) => String(value || "").trim()).filter(Boolean) : [];
+  if (aliases.length === 0) process.exit(4);
+  if (entry.defaultInput !== undefined && (!entry.defaultInput || typeof entry.defaultInput !== "object" || Array.isArray(entry.defaultInput))) process.exit(5);
+  for (const alias of aliases) {
+    const normalized = normalize(alias);
+    if (!normalized) process.exit(6);
+    if (seenAliases.has(normalized)) process.exit(7);
+    seenAliases.set(normalized, index);
+  }
+}
+' "$value" >/dev/null 2>&1 || {
+        echo "frequentScripts must be an array of unique alias mappings with non-empty scriptName and aliases" >&2
         exit 1
       }
       ;;
@@ -194,7 +225,7 @@ let value = rawValue;
 if (rawValue === "true") value = true;
 else if (rawValue === "false") value = false;
 else if (/^[0-9]+$/.test(rawValue)) value = Number(rawValue);
-else if (key === "triggerSnapshot" || key === "scriptSnapshot" || key === "browserProfileSnapshot") value = JSON.parse(rawValue);
+else if (key === "triggerSnapshot" || key === "scriptSnapshot" || key === "browserProfileSnapshot" || key === "frequentScripts") value = JSON.parse(rawValue);
 
 data[key] = value;
 data.updatedAt = new Date().toISOString();
@@ -333,6 +364,9 @@ Usage:
   export_preference.sh set-trigger-snapshot <json>
   export_preference.sh get-trigger-snapshot
   export_preference.sh clear-trigger-snapshot
+  export_preference.sh set-frequent-scripts <json>
+  export_preference.sh get-frequent-scripts
+  export_preference.sh clear-frequent-scripts
   export_preference.sh set-browser-profiles <json>
   export_preference.sh get-browser-profiles
   export_preference.sh clear-browser-profiles
@@ -356,6 +390,7 @@ Supported keys:
   defaultSandboxSnapshotMaxChars        integer
   triggerSnapshot                       JSON object
   scriptSnapshot                        JSON object
+  frequentScripts                       JSON array (stored in runtime/frequent-scripts.json)
   browserProfileSnapshot                JSON object
 EOF
 }
@@ -381,6 +416,10 @@ main() {
         echo "get requires <key>" >&2
         exit 1
       }
+      if [[ "$key" == "frequentScripts" ]]; then
+        bash "$FREQUENT_SCRIPT_HELPER" get
+        return 0
+      fi
       print_value "$key" "$pref_path"
       ;;
     set-key)
@@ -390,6 +429,11 @@ main() {
         echo "set-key requires <key> <value>" >&2
         exit 1
       }
+      if [[ "$key" == "frequentScripts" ]]; then
+        bash "$FREQUENT_SCRIPT_HELPER" set "$value" >/dev/null
+        printf '%s=%s\n' "$key" "$value"
+        return 0
+      fi
       validate_key_value "$key" "$value"
       write_value "$key" "$value" "$pref_path"
       printf '%s=%s\n' "$key" "$value"
@@ -400,6 +444,10 @@ main() {
         echo "unset-key requires <key>" >&2
         exit 1
       }
+      if [[ "$key" == "frequentScripts" ]]; then
+        bash "$FREQUENT_SCRIPT_HELPER" clear >/dev/null
+        return 0
+      fi
       unset_value "$key" "$pref_path"
       ;;
     apply-recommended)
@@ -434,6 +482,20 @@ main() {
       ;;
     clear-script-snapshot)
       unset_value "scriptSnapshot" "$pref_path"
+      ;;
+    set-frequent-scripts)
+      value="${2:-}"
+      [[ -n "$value" ]] || {
+        echo "set-frequent-scripts requires <json>" >&2
+        exit 1
+      }
+      bash "$FREQUENT_SCRIPT_HELPER" set "$value" >/dev/null
+      ;;
+    get-frequent-scripts)
+      bash "$FREQUENT_SCRIPT_HELPER" get
+      ;;
+    clear-frequent-scripts)
+      bash "$FREQUENT_SCRIPT_HELPER" clear >/dev/null
       ;;
     set-browser-profiles)
       value="${2:-}"
