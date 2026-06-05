@@ -7,7 +7,6 @@ PREFLIGHT_SCRIPT="$SKILL_DIR/scripts/preflight_check.sh"
 LOCAL_LOOP_SCRIPT="$SKILL_DIR/scripts/local_dispatch_loop.sh"
 CLOUD_LOOP_SCRIPT="$SKILL_DIR/scripts/cloud_dispatch_loop.sh"
 BROWSER_SANDBOX_SCRIPT="$SKILL_DIR/scripts/browser_sandbox_bridge.sh"
-SCRIPT_CATALOG_SCRIPT="$SKILL_DIR/scripts/script_catalog.sh"
 DEFAULT_RUNTIME_BASE_URLS=(
   "http://127.0.0.1:8877"
   "http://localhost:8877"
@@ -60,7 +59,6 @@ Usage:
   run.sh triggers run [options]
   run.sh triggers refresh [options]
   run.sh sandbox profiles|tabs|snapshot [options]
-  run.sh scripts list|show|run [options]
 
 Options:
   --connection-mode <local|cloud>
@@ -359,8 +357,7 @@ route_subcommand() {
       exec bash "$BROWSER_SANDBOX_SCRIPT" "$@"
       ;;
     scripts)
-      shift 1
-      exec bash "$SCRIPT_CATALOG_SCRIPT" "$@"
+      die "mx-auto 已去 script 化；请改用 'run.sh triggers ...' 或 'run.sh sandbox ...'"
       ;;
     triggers)
       case "$subcommand" in

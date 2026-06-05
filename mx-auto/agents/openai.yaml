@@ -1,4 +1,4 @@
 interface:
   display_name: "MX Auto"
   short_description: "Control local Runtime automations"
-  default_prompt: "Use $mx-auto to list or run local Runtime triggers, inspect read-only sandbox tabs, or run local App scripts."
+  default_prompt: "Use $mx-auto to list or run local Runtime triggers, or inspect read-only sandbox tabs. Pass trigger input through unchanged. Normalize dates as either relative_day with relativeDays and optional numericDayOffsets, or specific_date with targetDates. Accept the user's exact sandbox name directly in sandboxId when provided."

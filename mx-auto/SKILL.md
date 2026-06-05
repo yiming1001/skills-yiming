@@ -1,6 +1,6 @@
 ---
 name: mx-auto
-description: Local Runtime automation entrypoint for App triggers, read-only browser sandbox inspection, and local script execution. Use when the user wants to list or run Runtime triggers, inspect existing browser sandbox tabs/snapshots, or list/show/run local App scripts.
+description: Local Runtime automation entrypoint for App triggers and read-only browser sandbox inspection. Use when the user wants to list or run Runtime triggers, or inspect existing browser sandbox tabs/snapshots.
 metadata:
   short-description: Local Runtime automation router
 ---
@@ -13,8 +13,7 @@ Use this skill as a lightweight router for local Runtime automation. Keep the fi
 
 - **Triggers**: list, refresh, inspect, or run callable App triggers. Read [references/triggers.md](references/triggers.md).
 - **Sandbox**: list existing browser sandbox tabs or snapshot an existing tab. Read [references/sandbox.md](references/sandbox.md).
-- **Scripts**: list, inspect, or run local App scripts/examples. Read [references/scripts.md](references/scripts.md).
-- **Mixed requests**: when a task combines multiple capabilities or needs troubleshooting across them, read [references/learning-guide.md](references/learning-guide.md).
+- **Mixed requests**: when a task combines trigger execution and sandbox inspection, or needs troubleshooting across them, read [references/learning-guide.md](references/learning-guide.md).
 
 Do not bulk-load all references. Choose the smallest matching workflow, then run the bundled scripts instead of retyping request logic.
 
@@ -59,18 +58,6 @@ Runtime admin token discovery:
 
 Never store or print the Runtime admin token value. App updates may rotate or recreate it; re-read the token file at runtime.
 
-Frequent scripts registry:
-
-`{resolved app home}/runtime/frequent-scripts.json`
-
-Helper:
-
-```bash
-bash {baseDir}/scripts/frequent_scripts.sh show
-bash {baseDir}/scripts/frequent_scripts.sh get
-bash {baseDir}/scripts/frequent_scripts.sh set '<json-array-or-registry>'
-```
-
 ## Entry Points
 
 Prefer the wrapper:
@@ -84,15 +71,12 @@ Capability commands:
 ```bash
 bash {baseDir}/scripts/run.sh triggers list --format json
 bash {baseDir}/scripts/run.sh triggers run --trigger-name "小红书测试"
+bash {baseDir}/scripts/run.sh triggers run --trigger-id trigger_xxx --input-json '{"keyword":"美食探店","sandboxId":"脱不花"}'
+bash {baseDir}/scripts/run.sh triggers run --trigger-id trigger_xxx --input-json '{"dateMode":"relative_day","relativeDays":["今天"],"numericDayOffsets":"7","sandboxId":"脱不花"}'
+bash {baseDir}/scripts/run.sh triggers run --trigger-id trigger_xxx --input-json '{"dateMode":"specific_date","targetDates":["2026-06-04"],"sandboxId":"脱不花"}'
 bash {baseDir}/scripts/run.sh sandbox profiles --refresh --format json
 bash {baseDir}/scripts/run.sh sandbox tabs --account "脱不花" --format json
 bash {baseDir}/scripts/run.sh sandbox snapshot --account "脱不花" --url-contains dashboardV4 --url-not-contains /review
-bash {baseDir}/scripts/run.sh scripts list --format json --compact --cache-first
-bash {baseDir}/scripts/run.sh scripts list --format json --compact --cache-first --catalog
-bash {baseDir}/scripts/run.sh scripts show xiaohongshu/note.search.v1 --format json --compact --cache-first
-bash {baseDir}/scripts/run.sh scripts show douyin/video.search.v1 --format json --compact --cache-first --catalog
-bash {baseDir}/scripts/run.sh scripts show "小红书搜笔记" --format json --cache-first
-bash {baseDir}/scripts/run.sh scripts run "小红书搜笔记" --wait true --format json
 ```
 
 Legacy trigger commands remain supported:
@@ -106,8 +90,11 @@ bash {baseDir}/scripts/run.sh --trigger-name "小红书测试"
 
 - Prefer local Runtime auto-discovery before asking the user for paths, ports, or tokens.
 - Store only non-secret defaults such as `defaultAppHome` or `defaultLocalBaseUrl`.
-- For script routing, default to the frequent-script registry. Low-frequency scripts must be added to the registry before AI can run them.
-- Use `--catalog` only for discovery or add-to-frequent flows; do not use it as a direct execution path.
-- Script execution must explicitly choose an account sandbox with `--account` or `--browser-profile-id`; do not rely on Runtime's default browser profile for business scripts.
-- Use exact trigger/script names for execution. Do not fuzzy-match names when running.
+- Treat trigger input as the source of truth for business parameters. Pass `--input-json` through to `trigger.execute` without renaming keys or inventing defaults.
+- Date inputs must use one of two mutually exclusive shapes:
+  - relative dates: `dateMode:"relative_day"` with `relativeDays` and optional `numericDayOffsets`
+  - specific dates: `dateMode:"specific_date"` with `targetDates`
+- Do not mix `relativeDays` or `numericDayOffsets` with `targetDates` in the same recommended payload.
+- When a trigger expects `sandboxId`, the user may provide the exact sandbox name directly, or pass a Runtime sandbox ID. Let Runtime validate or resolve it.
+- Use exact trigger names for execution. Do not fuzzy-match names when running.
 - Sandbox operations are read-only; never navigate, click, type, or create tabs from this skill.
