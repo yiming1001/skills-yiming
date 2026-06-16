@@ -1,0 +1,4 @@
+interface:
+  display_name: "Web Collection"
+  short_description: "Guide setup, QA, and browser collection"
+  default_prompt: "Use $web-collection to answer first-time setup questions, route QA to the current guide, or run a browser data collection task through the correct local or cloud flow."
