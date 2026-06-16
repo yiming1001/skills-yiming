@@ -1,6 +1,6 @@
 ---
 name: web-collection
-description: Browser plugin data collection via a local bridge or cloud dispatch to a connected local connector, in strict synchronous closed-loop mode. Cloud mode includes async command-result querying. Use for Douyin, TikTok, Xiaohongshu, Amazon, Bilibili, and first-time web-collection onboarding or QA guidance.
+description: 通过云端连接器优先执行浏览器插件数据采集，也可回退到本地连接器；适用于抖音、TikTok、小红书、Amazon、Bilibili 的采集任务，以及 web-collection 首次上手、配置、付费使用说明和 QA 排障。
 ---
 
 # Web Collection
@@ -35,7 +35,7 @@ For collection execution, keep using this `SKILL.md` and the bundled scripts as 
 ## Core Rules
 
 1. Use the user's normal Chrome environment, not the isolated `openclaw` browser profile.
-2. Prefer the connector flow over generic browser tooling.
+2. Prefer the cloud connector flow over local connector mode unless the user explicitly asks for local mode or cloud credentials are unavailable.
 3. Never ask for configuration that is already present in environment variables.
 4. Local and cloud use the same recommended defaults and overall collection flow.
 5. Cloud adds only two extra required values: `id` and `token`.
@@ -101,7 +101,7 @@ Mode-specific defaults:
 
 On first use:
 
-1. Determine the execution mode first.
+1. Determine the execution mode first. Default to `cloud` when the user does not specify a mode.
 2. If the mode is `cloud`, collect these values only when they are not already available from environment variables or stored preferences:
    - `defaultCloudDeviceId`
    - `defaultCloudToken`
@@ -172,7 +172,7 @@ Preferred custom-config prompt:
 
 Recommended defaults:
 
-- 运行位置：`local`
+- 运行位置：`cloud`
 - 导出方式：`多维表格`
 - 采集条数：`20`
 - 采集详情：`true`
@@ -339,9 +339,9 @@ The wrapper:
 - runs `scripts/preflight_check.sh` first
 - applies stored preferences
 - enforces required setup
-- runs either local bridge mode or cloud dispatch mode
-- local mode dispatches only through `scripts/collect_and_export_loop.sh`
+- defaults to cloud dispatch mode when no mode is specified
 - cloud mode dispatches only through `scripts/cloud_dispatch_loop.sh`
+- local mode dispatches only through `scripts/collect_and_export_loop.sh`
 - never mixes the local and cloud send-command scripts
 
 ## Bundled Resources

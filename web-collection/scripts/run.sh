@@ -28,7 +28,7 @@ FILTERS_JSON=""
 DEDUPLICATION=""
 DEDUPLICATION_STRATEGY=""
 
-CONNECTION_MODE="${WEB_COLLECTION_CONNECTION_MODE:-local}"
+CONNECTION_MODE="${WEB_COLLECTION_CONNECTION_MODE:-cloud}"
 BRIDGE_URL="${WEB_COLLECTION_BRIDGE_URL:-http://127.0.0.1:19820}"
 CLOUD_BASE_URL="${WEB_COLLECTION_CLOUD_BASE_URL:-https://i-sync.cn}"
 CLOUD_DEVICE_ID="${WEB_COLLECTION_CLOUD_DEVICE_ID:-}"
@@ -65,7 +65,7 @@ Common examples:
   run.sh --keyword "小龙虾" --export-target bitable --max-items 20 --ensure-bridge
 
 Options:
-  --connection-mode <local|cloud> default: local
+  --connection-mode <local|cloud> default: cloud
   --platform <name>              default: douyin
   --method <name>                optional; default depends on platform
   --keyword <text>               repeatable
@@ -94,7 +94,7 @@ Options:
   --bridge-cmd '<cmd>'
 
 Env:
-  WEB_COLLECTION_CONNECTION_MODE default: local
+  WEB_COLLECTION_CONNECTION_MODE default: cloud
   WEB_COLLECTION_BRIDGE_URL       default: http://127.0.0.1:19820
   WEB_COLLECTION_CLOUD_BASE_URL   optional override, default: https://i-sync.cn
   WEB_COLLECTION_CLOUD_DEVICE_ID  optional, target connector device_id
@@ -106,7 +106,7 @@ EOF
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --connection-mode)
-      CONNECTION_MODE="${2:-local}"
+      CONNECTION_MODE="${2:-cloud}"
       HAS_CONNECTION_MODE_ARG="true"
       shift 2
       ;;
@@ -371,7 +371,7 @@ ensure_required_preferences() {
 }
 
 normalize_connection_mode() {
-  local raw="${1:-local}"
+  local raw="${1:-cloud}"
   local lower
   lower="$(printf '%s' "$raw" | tr '[:upper:]' '[:lower:]')"
   case "$lower" in

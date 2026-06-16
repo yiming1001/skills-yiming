@@ -335,7 +335,7 @@ const envMode = typeof process.env.WEB_COLLECTION_CONNECTION_MODE === "string" &
   : "";
 const mode = envMode || (typeof data.defaultConnectionMode === "string" && data.defaultConnectionMode
   ? data.defaultConnectionMode
-  : "local");
+  : "cloud");
 const envCloudDeviceId = typeof process.env.WEB_COLLECTION_CLOUD_DEVICE_ID === "string"
   ? process.env.WEB_COLLECTION_CLOUD_DEVICE_ID
   : "";
@@ -382,7 +382,7 @@ process.exit(missing.length === 0 ? 0 : 1);
 apply_recommended_preferences() {
   local pref_path="$1"
   local legacy_path="$2"
-  write_value "defaultConnectionMode" "local" "$pref_path" "$legacy_path"
+  write_value "defaultConnectionMode" "cloud" "$pref_path" "$legacy_path"
   write_value "defaultExportMode" "bitable" "$pref_path" "$legacy_path"
   write_value "defaultMaxItems" "20" "$pref_path" "$legacy_path"
   write_value "defaultFetchDetail" "true" "$pref_path" "$legacy_path"

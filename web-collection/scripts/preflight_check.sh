@@ -12,7 +12,7 @@ WRITE_PREFERENCES="false"
 PROBE_BRIDGE="false"
 FORMAT="json"
 QUIET_SUCCESS="false"
-MODE="local"
+MODE="cloud"
 
 usage() {
   cat <<'EOF'
@@ -24,7 +24,7 @@ Options:
   --config-file <path>      Read config JSON from file
   --write-preferences       Persist provided defaults before checking
   --probe-bridge            Probe local /api/status when mode=local
-  --mode <local|cloud>      Execution mode, default: local
+  --mode <local|cloud>      Execution mode, default: cloud
   --format <json|text>      Output format, default: json
   --quiet-success           Print nothing when ready
   -h, --help
@@ -61,7 +61,7 @@ while [[ $# -gt 0 ]]; do
       shift 1
       ;;
     --mode)
-      MODE="${2:-local}"
+      MODE="${2:-cloud}"
       shift 2
       ;;
     --format)
