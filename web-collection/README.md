@@ -2,13 +2,14 @@
 
 `web-collection` is a browser-extension data collection skill for Douyin, TikTok, Xiaohongshu, Amazon, and Bilibili.
 
-It prioritizes the cloud connector flow, with local connector execution as a fallback. The skill covers first-time onboarding, connector and bitable setup, cloud credential collection, closed-loop execution, export handling, and troubleshooting.
+It prioritizes the Agent-led connector flow, with local connector execution as a troubleshooting fallback. The skill covers first-time onboarding, connector and bitable setup, website login confirmation for connector authorization, closed-loop execution, export handling, and troubleshooting.
 
 ## Core Files
 
 - `SKILL.md`
 - `scripts/run.sh`
 - `scripts/preflight_check.sh`
+- `scripts/ensure_connector_auth.sh`
 - `scripts/cloud_dispatch_loop.sh`
 - `scripts/collect_and_export_loop.sh`
 - `scripts/export_preference.sh`
@@ -45,4 +46,4 @@ Use the wrapper script:
 bash scripts/run.sh --platform douyin --keyword "AI"
 ```
 
-The wrapper reads stored preferences, runs preflight checks, chooses exactly one execution mode, and dispatches through either the cloud connector loop or the local connector loop.
+The wrapper reads stored preferences, resolves connector authorization from existing state or a website login confirmation link, runs preflight checks, chooses exactly one internal execution mode, and dispatches through either the cloud connector loop or the local connector loop.

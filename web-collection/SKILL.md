@@ -27,9 +27,9 @@ The online documents are the source of truth for user-facing guidance. Do not du
   - https://vcn5grhrq8y0.feishu.cn/wiki/R6f2w6o7ci1db1kYLK4cgJIYnWh
   - Use before the user's first collection run, or when the user needs to install, download, update, or reconnect the browser extension or connector.
   - The browser extension and connector must be downloaded from this document. Do not tell users to search or install the extension from the Chrome Web Store / Google Store.
-- Bitable configuration, connector verification, and cloud credential guide:
+- Bitable configuration, connector verification, and authorization guide:
   - https://vcn5grhrq8y0.feishu.cn/wiki/EAtJw2irFiDvMpkZXb4cBjYonNg
-  - Use after installation is complete and before first collection. It covers plugin-side bitable configuration, connector status verification, and where to copy device ID plus Token.
+  - Use after installation is complete and before first collection. It covers plugin-side bitable configuration, connector status verification, and manual fallback details.
 - Bitable template direct link:
   - https://vcn5grhrq8y0.feishu.cn/base/UKQsbVHpMac293s0cnFc1hq1nDd?table=tblTXM4lclXM6Jzr&view=vew8OdcKHw
   - When guiding the user to copy the bitable template, send this direct link in the response so the user does not need to open the guide first to find it.
@@ -41,7 +41,7 @@ Decision rule:
 
 - If the user asks what this skill is, what it can do, or generally says "how do I use this skill" without explicitly asking to configure now, give only the lightweight intro response. Do not show the full operation flow, setup checklist, or screenshots yet. End by asking whether they want to continue with first-time setup/configuration.
 - If the user confirms they want to continue setup/configuration, or asks for first-time setup, installation, binding bitable, connector verification, or credential collection, enter the onboarding flow below and show the relevant screenshots inline.
-- If the user asks to collect data but first-time setup is not confirmed, guide installation first, then bitable configuration and connector verification, then cloud credential collection. Wait for the user's confirmation before proceeding between those phases.
+- If the user asks to collect data but first-time setup is not confirmed, guide installation first, then bitable configuration and connector authorization. Wait for the user's confirmation before proceeding between those phases.
 - If the user reports a problem, asks whether a behavior is normal, or asks how to recover a failed run/export, send the QA link first and answer from that document when accessible.
 - If the user asks to collect data now, continue with the execution contract below.
 
@@ -73,13 +73,13 @@ Image/text placement rules:
 
 Connector guidance constraints:
 
-- The connector credential step must be described as opening `http://127.0.0.1:19820`, authorizing login, verifying green statuses, then copying `device_id` and `connector_token`.
+- Do not ask the user to manually copy `device_id`, `connector_token`, `Token`, or `API token` during normal Agent-led use.
+- When connector authorization is missing or expired, generate the website login confirmation link through the bundled scripts and ask the user to click it.
+- The user's action should be described simply as: open the Agent-provided link, finish website login/authorization, then return to the Agent.
 - Do not tell the user to click `免费获取云端连接器凭证`.
 - Do not tell the user to enter an email address to receive a credential.
 - Do not tell the user to choose or switch `云端连接器` / `本地连接器` mode in this onboarding step.
-- Do not split the connector step into repeated substeps with the same screenshot. Treat `assets/connector-step-01-status-token.png` as the overview image for the whole third major step.
-- In the third major step, list all connector operations first, then show `assets/connector-step-01-status-token.png` exactly once at the end of that major step. Do not place the image under each numbered substep.
-- Use the exact credential names `device_id` and `connector_token` in the reply format. Do not rename them to `Device ID`, `Token`, `API token`, or other variants except when briefly explaining that the page may visually label the token as Token.
+- Do not split the connector step into repeated substeps with the same screenshot. Treat `assets/connector-step-01-status-token.png` as an optional overview image only when explaining the connector UI for troubleshooting or manual fallback.
 
 Expected optional assets:
 
@@ -100,7 +100,7 @@ Expected optional assets:
 - `assets/copy-device-token.gif` or `assets/copy-device-token.png`
   - Legacy optional asset. Prefer `assets/connector-step-01-status-token.png` and do not show a separate credential-copy image.
 - `assets/connector-step-01-status-token.png`
-  - Use exactly once as the overview image at the end of the third major step. It covers `http://127.0.0.1:19820` connector authorization, green status verification, and device ID plus Token copying. Do not repeat it below multiple substeps.
+  - Use only as a manual fallback/troubleshooting overview. It covers connector authorization and green status verification. Do not repeat it below multiple substeps.
 - `assets/view-results.gif` or `assets/view-results.png`
   - Use after successful collection to show where to view exported results.
 
@@ -186,30 +186,16 @@ Do not repeat the "what this skill can do" platform/capability explanation in th
    - Ask the user to finish this step and reply `多维表格已绑定`.
    - When responding to the user, put the detailed guide link at the end of the message, after all operations and screenshots:
      `https://vcn5grhrq8y0.feishu.cn/wiki/EAtJw2irFiDvMpkZXb4cBjYonNg`
-3. Guide connector configuration and cloud credential collection.
-   - Treat this as one major step, not multiple image-backed substeps.
-   - Show `assets/connector-step-01-status-token.png` exactly once at the end of this major step, after all connector operations and after the credential reply format. Do not also show separate status verification or token-copy screenshots for this step.
-   - Do not use any flow involving `免费获取云端连接器凭证`, email delivery, or choosing connector modes.
-   - Give these concrete operations:
-     - Open `http://127.0.0.1:19820` in the browser.
-     - Click authorization login and log in with the media assistant account.
-     - Verify that local connector, cloud connection, plugin bridge, plugin account, and bitable configuration are all green.
-     - Copy device ID plus Token from the connector page.
-   - Ask the user to send both values in this exact format:
-
-```text
-device_id=...
-connector_token=...
-```
-
-   - Treat connector Token as `connector_token` and store it as `defaultCloudToken`.
-   - If the user says credentials are already configured, run `scripts/export_preference.sh check` and only ask for missing values.
-   - Then show the single overview screenshot: `assets/connector-step-01-status-token.png`.
-   - When responding to the user, put the detailed guide link at the end of the message, after all operations and screenshots:
+3. Guide connector authorization.
+   - Do not ask the user to copy credentials by default.
+   - When authorization is needed, run the normal collection entry point or `scripts/ensure_connector_auth.sh`; it will generate a website login confirmation link.
+   - Tell the user: open the link, finish website login/authorization, then return to the Agent and retry/continue.
+   - After confirmation, the connector/App writes `connector_token`, `ws_url`, and `device_id` into its own state. The Skill should reuse that state automatically.
+   - Only use `assets/connector-step-01-status-token.png` as a manual fallback/troubleshooting overview, not as the primary Agent-led flow.
+   - When responding to the user, put the detailed guide link at the end if they need the full connector UI reference:
      `https://vcn5grhrq8y0.feishu.cn/wiki/EAtJw2irFiDvMpkZXb4cBjYonNg`
-4. Persist credentials and continue to first-run preferences.
-   - Store `device_id` as `defaultCloudDeviceId`.
-   - Store `connector_token` / API token as `defaultCloudToken`.
+4. Continue to first-run preferences.
+   - Do not persist connector credentials manually unless the user explicitly provides them or an environment/runtime source already has them.
    - Then continue with the `First-run flow` below.
 5. After collection succeeds, guide result viewing and further learning.
    - If bitable export succeeds and `export.tableUrl` exists, put the table link first and tell the user to open it to view results.
@@ -220,15 +206,15 @@ connector_token=...
 ## Core Rules
 
 1. Use the user's normal Chrome environment, not the isolated `openclaw` browser profile.
-2. Prefer the cloud connector flow over local connector mode unless the user explicitly asks for local mode or cloud credentials are unavailable.
+2. Prefer the Agent-led connector flow. Do not expose local/cloud mode choices to the user unless they explicitly ask for troubleshooting details.
 3. Never ask for configuration that is already present in environment variables.
-4. Local and cloud use the same recommended defaults and overall collection flow.
-5. Cloud adds only two extra required values: `id` and `token`.
+4. Connector credentials should be discovered from environment variables, stored preferences, connector/App state, or the website login confirmation callback.
+5. When credentials are missing or expired, provide a website login confirmation link instead of asking the user to copy token values.
 6. Default to synchronous closed-loop execution.
 7. Do not reply before the collection script finishes.
-8. Choose one execution mode first:
-   - `local`: talk to the local bridge directly and only run the local send-command script
-   - `cloud`: call the cloud connector dispatch API and only run the cloud send-command script
+8. Internally choose one execution mode first:
+   - `cloud`: default; call the connector dispatch API and only run the cloud send-command script
+   - `local`: troubleshooting/manual fallback; talk to the local bridge directly and only run the local send-command script
 9. In `cloud` mode, do not rewrite the collection payload. Only wrap it in:
    - `device_id`
    - `action`
@@ -252,8 +238,6 @@ bash {baseDir}/scripts/export_preference.sh show
 bash {baseDir}/scripts/export_preference.sh check
 bash {baseDir}/scripts/export_preference.sh apply-recommended
 bash {baseDir}/scripts/export_preference.sh set-key defaultConnectionMode cloud
-bash {baseDir}/scripts/export_preference.sh set-key defaultCloudDeviceId desktop-local-smoke-fix
-bash {baseDir}/scripts/export_preference.sh set-key defaultCloudToken <user_api_key>
 bash {baseDir}/scripts/export_preference.sh set-key defaultExportMode csv
 bash {baseDir}/scripts/export_preference.sh set-key defaultDeduplicationEnabled true
 bash {baseDir}/scripts/export_preference.sh set-key defaultDeduplicationStrategy keepOld
@@ -271,60 +255,46 @@ Optional defaults with built-in fallback:
 - `defaultDeduplicationEnabled` defaults to `true`
 - `defaultDeduplicationStrategy` defaults to `keepOld`
 
-Mode-specific defaults:
+Connector authorization defaults:
 
-- `local`
-  - no extra required key if the default local bridge URL works
-- `cloud`
-  - cloud base URL is fixed to `https://i-sync.cn` by default
-  - `defaultCloudDeviceId` only when it is not already provided by environment variables
-  - `defaultCloudToken` only when it is not already provided by environment variables
-
-`run.sh` enforces this. If these are incomplete, collection must not start.
+- The cloud base URL is fixed to `https://i-sync.cn` by default.
+- `defaultCloudDeviceId` and `defaultCloudToken` are optional manual overrides, not first-run questions.
+- `run.sh` first tries environment variables, stored preferences, App state, and connector state.
+- If no valid connector token is available, `run.sh` prints a website login confirmation link and stops with an authorization-required message.
+- After the user confirms login in the browser, rerun/continue the collection; the Skill should reuse the newly written connector state.
 
 ### First-run flow
 
 On first use:
 
-1. Determine the execution mode first. Default to `cloud` when the user does not specify a mode.
-2. If the mode is `cloud`, collect these values only when they are not already available from environment variables or stored preferences:
-   - `defaultCloudDeviceId`
-   - `defaultCloudToken`
-3. Then handle the common defaults:
+1. Default to the Agent-led connector flow.
+2. Do not ask for `defaultCloudDeviceId` or `defaultCloudToken`.
+3. If connector authorization is missing, run the collection entry point and give the user the generated website login confirmation link.
+4. Then handle the common defaults:
    - 导出方式
    - 默认采集条数
    - 是否默认采集详情
    - 默认采集速度
    - 是否开启导出去重
    - 去重保留策略
-4. Ask only one question for the common defaults:
+5. Ask only one question for the common defaults:
    - `推荐配置`
    - `自己配置`
-5. If the user chooses `推荐配置`, run:
+6. If the user chooses `推荐配置`, run:
 
 ```bash
 bash {baseDir}/scripts/export_preference.sh apply-recommended
 ```
 
-6. If the user chooses `自己配置`, ask for all common values in one message, not one by one.
-7. Only continue when `check` passes.
+7. If the user chooses `自己配置`, ask for all common values in one message, not one by one.
+8. Only continue when the common defaults are complete. Connector authorization can be resolved automatically by the scripts.
 
 Preferred cloud prompt:
 
 ```text
-检测到你要走云端分发，还需要这两个配置：
-- device_id
-- connector_token / API token
+需要确认一次连接器授权。请打开下面这个登录确认链接，完成网站登录/授权后回到这里，我会继续执行采集：
 
-请先按这份文档完成连接器验证，并在连接器/云端配置页面复制这两个值：
-https://vcn5grhrq8y0.feishu.cn/wiki/EAtJw2irFiDvMpkZXb4cBjYonNg
-
-复制后请按下面格式一次性发给我：
-
-device_id=...
-connector_token=...
-
-说明：connector_token / API token 属于连接凭证，请只发送给可信任的 Agent 或协作者。
+<login_url>
 ```
 
 Preferred quick-reply prompt for common defaults:
@@ -542,8 +512,12 @@ The wrapper:
 - `scripts/preflight_check.sh`
   - validates required defaults before dispatch
   - treats environment-variable configuration as already satisfied and never asks for it
+- `scripts/ensure_connector_auth.sh`
+  - resolves connector authorization before dispatch
+  - reads explicit values, App state, connector state, or generates a website login confirmation link when authorization is missing
 - `scripts/run.sh`
   - chooses exactly one dispatch path based on `connection-mode`
+  - calls `scripts/ensure_connector_auth.sh` before cloud dispatch
   - never mixes local and cloud send-command scripts
 - `scripts/collect_and_export_loop.sh`
   - local-only send-command script
@@ -669,10 +643,10 @@ When `bitable` export is expected but no table link exists, explicitly say expor
   - Chrome/plugin is not connected to the bridge
 - bridge/status mismatch
   - in `local` mode, ensure collect, status, and stop all use the same local base URL
-- cloud dispatch auth failed
-  - check `defaultCloudToken`
-- cloud dispatch could not reach device
-  - check `defaultCloudDeviceId` and whether the local connector is online
+- connector authorization is missing or expired
+  - rerun the collection entry point and open the generated website login confirmation link
+- cloud dispatch could not reach the connector
+  - confirm the connector/App is running and the website login confirmation was completed
 - `TASK_RUNNING`
   - use stop + retry, or `--force-stop-before-start`
 - long record output hiding key fields
