@@ -20,17 +20,202 @@ The online documents are the source of truth for user-facing guidance. Do not du
 - Quick start / first-time use / UI operation guide:
   - https://vcn5grhrq8y0.feishu.cn/wiki/MoXrwwUN7iiUFkk8eWycs9JqntA?from=from_copylink
   - Use when the user asks how to use the plugin, how to start, how to configure it for the first time, where to click, how paid access works, or needs step-by-step human instructions.
+- Demo scenarios / example collection scenes:
+  - https://vcn5grhrq8y0.feishu.cn/wiki/GO11wlXkriSwNakXrt2ck0GanEe
+  - Use when introducing what this skill can do, when the user asks for examples, or after a successful run to point the user to more collection scenarios.
+- Browser extension and connector installation guide:
+  - https://vcn5grhrq8y0.feishu.cn/wiki/R6f2w6o7ci1db1kYLK4cgJIYnWh
+  - Use before the user's first collection run, or when the user needs to install, download, update, or reconnect the browser extension or connector.
+  - The browser extension and connector must be downloaded from this document. Do not tell users to search or install the extension from the Chrome Web Store / Google Store.
+- Bitable configuration, connector verification, and cloud credential guide:
+  - https://vcn5grhrq8y0.feishu.cn/wiki/EAtJw2irFiDvMpkZXb4cBjYonNg
+  - Use after installation is complete and before first collection. It covers plugin-side bitable configuration, connector status verification, and where to copy device ID plus Token.
+- Bitable template direct link:
+  - https://vcn5grhrq8y0.feishu.cn/base/UKQsbVHpMac293s0cnFc1hq1nDd?table=tblTXM4lclXM6Jzr&view=vew8OdcKHw
+  - When guiding the user to copy the bitable template, send this direct link in the response so the user does not need to open the guide first to find it.
 - QA / troubleshooting guide:
   - https://vcn5grhrq8y0.feishu.cn/wiki/F83hw2w6Xi7EOFkIScrccrQYnnd?from=from_copylink
   - Use when the user asks about errors, failed export, missing data, connector/cloud/local issues, access problems, supported scenarios, or other common questions.
 
 Decision rule:
 
-- If the user wants to learn, install, buy, activate, configure for the first time, or understand the UI, do not start collection. Send the quick-start link first and answer from that document when accessible.
+- If the user asks what this skill is, what it can do, or generally says "how do I use this skill" without explicitly asking to configure now, give only the lightweight intro response. Do not show the full operation flow, setup checklist, or screenshots yet. End by asking whether they want to continue with first-time setup/configuration.
+- If the user confirms they want to continue setup/configuration, or asks for first-time setup, installation, binding bitable, connector verification, or credential collection, enter the onboarding flow below and show the relevant screenshots inline.
+- If the user asks to collect data but first-time setup is not confirmed, guide installation first, then bitable configuration and connector verification, then cloud credential collection. Wait for the user's confirmation before proceeding between those phases.
 - If the user reports a problem, asks whether a behavior is normal, or asks how to recover a failed run/export, send the QA link first and answer from that document when accessible.
 - If the user asks to collect data now, continue with the execution contract below.
 
 For collection execution, keep using this `SKILL.md` and the bundled scripts as the agent contract. For complex or ambiguous execution requests, read [references/learning-guide.md](references/learning-guide.md) as an offline routing and recovery summary after checking whether the QA guide applies.
+
+## Visual Guidance Assets
+
+This skill may include local screenshots or GIFs under `assets/` for concise user guidance. For onboarding steps, guide the user in this order:
+
+1. Show the relevant local screenshot or GIF when it exists. Resolve image files relative to this `SKILL.md` file, under the bundled `assets/` directory. Use the image/attachment mechanism supported by the current Agent host. If the host supports Markdown images with relative packaged assets, use paths like `assets/bitable-step-00-personal-center.png`; if the host requires attachments, attach that asset file.
+2. Add a short step-specific instruction paragraph.
+3. Then provide the detailed Feishu document link as the full reference.
+
+If an asset is missing, still give a short text instruction first, then send the matching online document link and say the document contains the current visual guide.
+
+When the user has confirmed setup/configuration, asks to bind bitable, or asks how to obtain connector credentials, do not provide a text-only setup answer if matching assets exist. The answer must include the bundled screenshots inline or as attachments, placed next to the corresponding step. Do not invent machine-specific absolute paths; always resolve files from this skill package's `assets/` directory.
+
+Do not show screenshots in the lightweight intro response. Screenshots are only for the setup/configuration flow after the user confirms they want to continue.
+
+Image/text placement rules:
+
+- For configuration guidance, pair each operation with its matching image immediately before or after that operation. Do not put all images at the bottom of the answer.
+- The bitable binding step must be rendered as step text plus the corresponding image for each substep:
+  - `登录媒讯助手` text with `assets/bitable-step-00-personal-center.png`
+  - `复制多维表格模板` text with `assets/bitable-step-01-template-copy.png`
+  - `获取授权码` text with `assets/bitable-step-02-auth-code.png`
+  - `测试并保存多维表格配置` text with `assets/bitable-step-03-config-save.png`
+- The only exception is the connector step: `assets/connector-step-01-status-token.png` is an overview image for the whole third major step and must appear once at the end of that major step.
+
+Connector guidance constraints:
+
+- The connector credential step must be described as opening `http://127.0.0.1:19820`, authorizing login, verifying green statuses, then copying `device_id` and `connector_token`.
+- Do not tell the user to click `免费获取云端连接器凭证`.
+- Do not tell the user to enter an email address to receive a credential.
+- Do not tell the user to choose or switch `云端连接器` / `本地连接器` mode in this onboarding step.
+- Do not split the connector step into repeated substeps with the same screenshot. Treat `assets/connector-step-01-status-token.png` as the overview image for the whole third major step.
+- In the third major step, list all connector operations first, then show `assets/connector-step-01-status-token.png` exactly once at the end of that major step. Do not place the image under each numbered substep.
+- Use the exact credential names `device_id` and `connector_token` in the reply format. Do not rename them to `Device ID`, `Token`, `API token`, or other variants except when briefly explaining that the page may visually label the token as Token.
+
+Expected optional assets:
+
+- `assets/install-extension-connector.gif` or `assets/install-extension-connector.png`
+  - Use with the browser extension and connector installation guide.
+- `assets/configure-bitable.gif` or `assets/configure-bitable.png`
+  - Use when guiding plugin-side bitable export configuration.
+- `assets/bitable-step-00-personal-center.png`
+  - Use when telling the user to open the browser extension, enter `个人中心`, and log in.
+- `assets/bitable-step-01-template-copy.png`
+  - Use when telling the user to open the direct bitable template link and create a copy.
+- `assets/bitable-step-02-auth-code.png`
+  - Use when telling the user to open `多维表格插件` -> `自定义插件` and copy the authorization code.
+- `assets/bitable-step-03-config-save.png`
+  - Use when telling the user to fill in bitable URL plus authorization code, test the connection, and save.
+- `assets/verify-connector.gif` or `assets/verify-connector.png`
+  - Legacy optional asset. Prefer `assets/connector-step-01-status-token.png` and do not show a separate connector verification image.
+- `assets/copy-device-token.gif` or `assets/copy-device-token.png`
+  - Legacy optional asset. Prefer `assets/connector-step-01-status-token.png` and do not show a separate credential-copy image.
+- `assets/connector-step-01-status-token.png`
+  - Use exactly once as the overview image at the end of the third major step. It covers `http://127.0.0.1:19820` connector authorization, green status verification, and device ID plus Token copying. Do not repeat it below multiple substeps.
+- `assets/view-results.gif` or `assets/view-results.png`
+  - Use after successful collection to show where to view exported results.
+
+Do not block onboarding when these files are absent. The Feishu documents remain the source of truth for screenshots, GIFs, and current UI details.
+
+## Installation Guidance Constraints
+
+When guiding browser extension and connector installation, follow these constraints exactly:
+
+1. Browser extension source:
+   - Tell users to download and install the browser extension from the installation guide:
+     `https://vcn5grhrq8y0.feishu.cn/wiki/R6f2w6o7ci1db1kYLK4cgJIYnWh`
+   - Do not say "open the Chrome Web Store", "visit the Chrome app store", "search the Chrome extension store", or similar.
+   - Do not invent any public store listing or alternate download source.
+2. Connector platform variants:
+   - The connector has separate Mac and Windows versions.
+   - If the user's operating system is known, give only the matching instruction.
+   - If the user's operating system is unknown, briefly mention both Mac and Windows instructions, or ask which system they use if choosing the wrong installer would be risky.
+3. Mac connector behavior:
+   - Tell Mac users to download and install the Mac version from the installation guide.
+   - After installation, the connector runs in the background by default; the user generally does not need to manually manage it.
+4. Windows connector behavior:
+   - Tell Windows users to download the Windows version from the installation guide.
+   - After installation/download, the user needs to double-click the `.exe` file to run the connector.
+5. Onboarding response order:
+   - First show the local image/GIF if available.
+   - Then give the short installation instruction with the correct source and OS-specific connector note.
+   - Finally attach the detailed installation guide link.
+
+## Onboarding Flow
+
+Use this flow before a user's first collection or whenever setup status is unclear.
+
+### Lightweight intro response
+
+Use this when the user asks what the skill is, what it can do, or how to use it in general, but has not explicitly asked to start setup/configuration.
+
+- Briefly explain that Web Collection is a browser-extension data collection skill for Douyin, TikTok, Xiaohongshu, Amazon, and Bilibili.
+- Mention what it can collect in the intro, using a compact platform list when helpful:
+  - Douyin: video keyword search, creator search, video comments, video details.
+  - TikTok: keyword search, user videos, comments, creator search.
+  - Xiaohongshu: note keyword search, creator notes, note comments, note details.
+  - Amazon: product keyword search, product details, product reviews.
+  - Bilibili: video keyword search, video details, creator videos, comments.
+- Mention that results can be exported to Feishu bitable or CSV.
+- Provide the demo scenarios / example collection scenes link:
+  `https://vcn5grhrq8y0.feishu.cn/wiki/GO11wlXkriSwNakXrt2ck0GanEe`
+- End with this next-step prompt, and then stop:
+
+```text
+如果你要继续使用，我可以带你完成首次配置。你回复「继续配置」后，我会按步骤发操作指引、截图和配置文档。
+```
+
+Do not include install steps, bitable binding steps, connector credential steps, or screenshots in this intro response.
+
+### First-time setup flow
+
+Use this only after the user confirms setup/configuration, or when they explicitly ask for installation, binding, connector verification, or credential collection.
+
+Do not repeat the "what this skill can do" platform/capability explanation in the setup flow. That content belongs only in the lightweight intro response. The setup flow starts directly with installing the browser extension and connector.
+
+1. Guide browser extension and connector installation.
+   - If `assets/install-extension-connector.*` exists, show it with a short instruction.
+   - Tell the user to download the browser extension from the installation guide, not from the Chrome Web Store / Google Store.
+   - Tell the user to install the connector version matching their operating system:
+     - Mac: download and install the Mac connector. It runs in the background by default after installation.
+     - Windows: download the Windows connector, then double-click the `.exe` file to run it.
+   - Provide the detailed installation guide after the short instruction:
+     `https://vcn5grhrq8y0.feishu.cn/wiki/R6f2w6o7ci1db1kYLK4cgJIYnWh`
+   - Ask the user to finish installation and reply `我已装完`.
+   - Do not ask for collection parameters or start collection before this confirmation.
+2. Guide bitable configuration.
+   - Show local screenshots inline or as attachments with the relevant steps when present. Resolve files from the bundled `assets/` directory.
+   - Do not list all bitable screenshots first or place them all at the end. Pair text and image in this exact sequence:
+     - Step text: Click the browser extension icon, enter `个人中心`, then log in to the media assistant account if the user is not already logged in.
+       Image: `assets/bitable-step-00-personal-center.png`
+     - Step text: Send the direct bitable template link: `https://vcn5grhrq8y0.feishu.cn/base/UKQsbVHpMac293s0cnFc1hq1nDd?table=tblTXM4lclXM6Jzr&view=vew8OdcKHw`. Tell the user to open that template link directly, choose `创建副本`, and make sure the copy is created in a bitable space. Tell the user to select `仅多维表格结构` when the copy dialog asks for the copy range.
+       Image: `assets/bitable-step-01-template-copy.png`
+     - Step text: In the newly copied bitable, click `多维表格插件`, choose `自定义插件`, click `获取授权码`, enable the authorization code, then copy it.
+       Image: `assets/bitable-step-02-auth-code.png`
+     - Step text: Go back to `媒讯助手`, open `配置中心` with the gear icon, expand the bitable configuration section, paste the newly copied bitable link and the personal authorization code, click `测试连接`, wait for `Connection successful` or green success text, then click `保存配置`.
+       Image: `assets/bitable-step-03-config-save.png`
+   - Ask the user to finish this step and reply `多维表格已绑定`.
+   - When responding to the user, put the detailed guide link at the end of the message, after all operations and screenshots:
+     `https://vcn5grhrq8y0.feishu.cn/wiki/EAtJw2irFiDvMpkZXb4cBjYonNg`
+3. Guide connector configuration and cloud credential collection.
+   - Treat this as one major step, not multiple image-backed substeps.
+   - Show `assets/connector-step-01-status-token.png` exactly once at the end of this major step, after all connector operations and after the credential reply format. Do not also show separate status verification or token-copy screenshots for this step.
+   - Do not use any flow involving `免费获取云端连接器凭证`, email delivery, or choosing connector modes.
+   - Give these concrete operations:
+     - Open `http://127.0.0.1:19820` in the browser.
+     - Click authorization login and log in with the media assistant account.
+     - Verify that local connector, cloud connection, plugin bridge, plugin account, and bitable configuration are all green.
+     - Copy device ID plus Token from the connector page.
+   - Ask the user to send both values in this exact format:
+
+```text
+device_id=...
+connector_token=...
+```
+
+   - Treat connector Token as `connector_token` and store it as `defaultCloudToken`.
+   - If the user says credentials are already configured, run `scripts/export_preference.sh check` and only ask for missing values.
+   - Then show the single overview screenshot: `assets/connector-step-01-status-token.png`.
+   - When responding to the user, put the detailed guide link at the end of the message, after all operations and screenshots:
+     `https://vcn5grhrq8y0.feishu.cn/wiki/EAtJw2irFiDvMpkZXb4cBjYonNg`
+4. Persist credentials and continue to first-run preferences.
+   - Store `device_id` as `defaultCloudDeviceId`.
+   - Store `connector_token` / API token as `defaultCloudToken`.
+   - Then continue with the `First-run flow` below.
+5. After collection succeeds, guide result viewing and further learning.
+   - If bitable export succeeds and `export.tableUrl` exists, put the table link first and tell the user to open it to view results.
+   - If CSV export is used, state that the result was exported as CSV.
+   - Then point the user to the demo scenarios / knowledge base link for more platforms, scenarios, and advanced usage:
+     `https://vcn5grhrq8y0.feishu.cn/wiki/GO11wlXkriSwNakXrt2ck0GanEe`
 
 ## Core Rules
 
@@ -129,9 +314,17 @@ Preferred cloud prompt:
 ```text
 检测到你要走云端分发，还需要这两个配置：
 - device_id
-- API token
+- connector_token / API token
 
-请一次性发给我。
+请先按这份文档完成连接器验证，并在连接器/云端配置页面复制这两个值：
+https://vcn5grhrq8y0.feishu.cn/wiki/EAtJw2irFiDvMpkZXb4cBjYonNg
+
+复制后请按下面格式一次性发给我：
+
+device_id=...
+connector_token=...
+
+说明：connector_token / API token 属于连接凭证，请只发送给可信任的 Agent 或协作者。
 ```
 
 Preferred quick-reply prompt for common defaults:
