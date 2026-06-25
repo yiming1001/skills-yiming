@@ -343,6 +343,34 @@ Recommended defaults:
 - 导出去重：`true`
 - 去重保留策略：`keepOld`（保留原始数据）
 
+### Feishu card config flow
+
+This skill can expose its default preferences as a compact Feishu form card through its own local scripts.
+
+Preferred pieces:
+
+- `scripts/config_card_spec.js`
+  - outputs the card-form spec for current Web Collection defaults
+- `scripts/apply_config.js`
+  - reads normalized form JSON from stdin and writes the preferences back through `export_preference.sh`
+- `scripts/send_config_card.sh`
+  - builds the card through the local `build_config_card.js` and sends it with `lark-cli im +messages-send`
+
+Recommended callback deployment:
+
+```bash
+CONFIG_WRITE_CMD="node {baseDir}/scripts/apply_config.js" \
+node {baseDir}/scripts/card_callback_server.js
+```
+
+Recommended send path:
+
+```bash
+bash {baseDir}/scripts/send_config_card.sh --chat-id oc_xxx --as user
+```
+
+Design rule: when sending the card, keep only the form controls and one save button. Do not prepend summary tables, request IDs, or implementation notes.
+
 ## Cloud Mode
 
 Use `cloud` mode when the collection request should be sent to the platform backend first, and then dispatched to the user's connected local connector.
@@ -364,6 +392,47 @@ Do not:
 - call the user's local `19820` port from the cloud path
 - rewrite `payload` semantics
 - mix local admin token logic into cloud requests
+
+## Filter Pass-through
+
+Advanced filters, including time-based filtering, must be passed through via the request `filters` object.
+
+Rules:
+
+- Do not invent one universal time-filter schema in this skill.
+- Do not rename or normalize platform-specific filter keys when the connector/plugin already expects a specific shape.
+- When the user asks for time filtering, treat it as a `filters` payload question first, not as a standalone top-level argument.
+- Prefer `--filters-json '<json-object>'` when calling `scripts/run.sh`; this becomes `payload.filters` in the final collect body.
+- Different platforms and methods may require different filter keys or value formats. For example, one method may expect `startTime` and `endTime`, while another may only support keys such as `sortBy`, relative publish-time options, or other method-specific fields.
+- If the exact filter shape is unclear, check `GET /api/filters` first, or the platform/method-scoped filter capability endpoint if available, before guessing.
+- Keep local mode and cloud mode behavior identical for filters: the same `filters` object should be preserved inside `payload`.
+
+Time-filter guidance:
+
+- Time filtering is supported only through `filters`, not through a fixed top-level skill parameter such as `--time-range`.
+- If the underlying method supports absolute time bounds, pass them inside `filters`, for example `startTime` / `endTime`.
+- If the underlying method supports relative or semantic time filters instead, pass that method's native key/value shape unchanged.
+- Treat published-time examples as method-specific examples, not as a stable cross-platform contract.
+
+Examples:
+
+```bash
+bash {baseDir}/scripts/run.sh \
+  --platform douyin \
+  --method videoKeyword \
+  --keyword "AI" \
+  --filters-json '{"startTime":1717171200000,"endTime":1719763199000}' \
+  --ensure-bridge
+```
+
+```bash
+bash {baseDir}/scripts/run.sh \
+  --platform amazon \
+  --method productReview \
+  --link "https://www.amazon.com/dp/B0..." \
+  --filters-json '{"sortBy":"recent"}' \
+  --ensure-bridge
+```
 
 ## Connector Command Ladder
 
@@ -528,6 +597,12 @@ The wrapper:
   - never starts a new collection
 - `scripts/export_preference.sh`
   - stores reusable defaults and masks cloud token in human-readable output
+- `scripts/config_card_spec.js`
+  - exports the Web Collection default-config form spec for the local card form runtime
+- `scripts/apply_config.js`
+  - applies normalized Feishu form values back into Web Collection preferences
+- `scripts/send_config_card.sh`
+  - convenience wrapper that generates and sends the compact Feishu config card
 - `references/learning-guide.md`
   - compact guidance for complex requests and asking rules
 

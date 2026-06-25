@@ -15,8 +15,11 @@ Use one unified rule set:
 4. Local and cloud are internal execution modes, not user-facing setup choices.
 5. Local mode may only call `scripts/collect_and_export_loop.sh`.
 6. Cloud mode may only call `scripts/cloud_dispatch_loop.sh`.
-7. Deduplication fields are resolved by the connector/plugin, never by this skill.
-8. Personal bitable export must remain `exportMode=personal`; deduplication is what makes the new plugin choose its smart personal export internally.
+7. Advanced filters, including time-based filters, must be passed through inside `payload.filters`.
+8. Do not invent one universal filter schema in this skill; different platforms and methods may require different filter keys or value formats.
+9. If the exact filter shape is unclear, check `GET /api/filters` first before guessing.
+10. Deduplication fields are resolved by the connector/plugin, never by this skill.
+11. Personal bitable export must remain `exportMode=personal`; deduplication is what makes the new plugin choose its smart personal export internally.
 
 ## Asking Rules
 
@@ -45,7 +48,15 @@ Do not ask for:
 2. Persist any user-provided defaults if this turn supplies them
 3. If authorization is required, give the generated website login confirmation link and ask the user to click it
 4. Build the payload
-5. Dispatch through the mode-specific script only
+5. If the user asked for time filtering or other advanced filtering, put it inside `filters` and preserve the platform/method-native shape
+6. Dispatch through the mode-specific script only
+
+## Filter Rules
+
+- Use `--filters-json '<json-object>'` when calling `scripts/run.sh`.
+- This becomes `payload.filters` in the final collect request.
+- Time filtering is not a fixed top-level skill argument. If supported, pass it through as part of `filters`, for example `startTime` / `endTime`.
+- Some methods may use other native shapes instead, such as `sortBy`, relative publish-time options, or other platform-specific keys. Preserve those keys unchanged.
 
 ## Deduplication Defaults
 
