@@ -1,0 +1,52 @@
+{
+  "schema_version": "hot-list-runtime.v1",
+  "platform": "bilibili",
+  "platform_name": "B站",
+  "function_type": "hot_list",
+  "function_name": "热榜",
+  "input_schema": {
+    "fields": [
+      {
+        "key": "pn",
+        "label": "起始页码",
+        "type": "number",
+        "default": 1,
+        "min": 1,
+        "max": 100
+      }
+    ]
+  },
+  "collection_config": {
+    "endpoint_path": "/tools/bilibili/fetch_com_popular",
+    "request_method": "POST",
+    "request_payload_mode": "query",
+    "params": [
+      "pn"
+    ],
+    "string_params": [],
+    "omit_empty_params": [],
+    "data_path": "data.list",
+    "pagination": {
+      "type": "page",
+      "param_name": "pn",
+      "start_page": 1
+    },
+    "estimate_per_page": 20,
+    "allow_collect_all": false
+  },
+  "execution_defaults": {
+    "collect_mode": "times",
+    "collect_times": 1,
+    "deduplication_enabled": true,
+    "deduplication_field": "bvid",
+    "deduplication_source": "bvid",
+    "deduplication_strategy": "keepOld",
+    "form_data": {
+      "pn": 1
+    }
+  },
+  "table_schema_ref": {
+    "schema_id": "bilibili_hot_list",
+    "schema_file": "../tables/bilibili_hot_list.json"
+  }
+}

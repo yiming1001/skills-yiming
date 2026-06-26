@@ -1,0 +1,36 @@
+{
+  "schema_version": "hot-list-runtime.v1",
+  "platform": "xiaohongshu",
+  "platform_name": "小红书",
+  "function_type": "hot_list",
+  "function_name": "热榜",
+  "input_schema": {
+    "show_collect_settings": false,
+    "fields": []
+  },
+  "collection_config": {
+    "endpoint_path": "/tools/xiaohongshu/fetch_hot_list",
+    "request_method": "GET",
+    "request_payload_mode": "query",
+    "params": [],
+    "string_params": [],
+    "omit_empty_params": [],
+    "data_path": "data.data.items",
+    "pagination": null,
+    "estimate_per_page": 50,
+    "allow_collect_all": false
+  },
+  "execution_defaults": {
+    "collect_mode": "times",
+    "collect_times": 1,
+    "deduplication_enabled": true,
+    "deduplication_field": "id",
+    "deduplication_source": "id",
+    "deduplication_strategy": "keepOld",
+    "form_data": {}
+  },
+  "table_schema_ref": {
+    "schema_id": "xiaohongshu_hot_list",
+    "schema_file": "../tables/xiaohongshu_hot_list.json"
+  }
+}

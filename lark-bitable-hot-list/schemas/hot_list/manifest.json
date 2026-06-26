@@ -1,0 +1,25 @@
+{
+  "schema_version": "hot-list-runtime.v1",
+  "function_type": "hot_list",
+  "description": "Runtime schemas owned by the skill. The backend should execute these configs instead of keeping platform-specific hot-list schemas in backend code.",
+  "platforms": [
+    {
+      "id": "bilibili",
+      "name": "B站",
+      "schema_file": "bilibili.json",
+      "table_schema_file": "../tables/bilibili_hot_list.json"
+    },
+    {
+      "id": "douyin",
+      "name": "抖音",
+      "schema_file": "douyin.json",
+      "table_schema_file": "../tables/douyin_hot_list.json"
+    },
+    {
+      "id": "xiaohongshu",
+      "name": "小红书",
+      "schema_file": "xiaohongshu.json",
+      "table_schema_file": "../tables/xiaohongshu_hot_list.json"
+    }
+  ]
+}

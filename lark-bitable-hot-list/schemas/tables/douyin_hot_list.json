@@ -1,0 +1,157 @@
+{
+  "schema_version": "table-schema.v1",
+  "table_schema_id": "douyin_hot_list",
+  "platform": "douyin",
+  "platform_name": "抖音",
+  "function_type": "hot_list",
+  "table_name": "抖音热榜",
+  "target": "personal_bitable",
+  "default_mode": "existing_table",
+  "ensure_table": true,
+  "ensure_fields": true,
+  "field_name_source": "label",
+  "fields": [
+    {
+      "key": "item_id",
+      "label": "作品ID",
+      "type": "text",
+      "field_type": 1,
+      "source": "item_id"
+    },
+    {
+      "key": "item_title",
+      "label": "标题",
+      "type": "text",
+      "field_type": 1,
+      "source": "item_title"
+    },
+    {
+      "key": "item_cover_url",
+      "label": "封面图",
+      "type": "text",
+      "field_type": 1,
+      "source": "item_cover_url"
+    },
+    {
+      "key": "item_duration",
+      "label": "时长",
+      "type": "text",
+      "field_type": 1,
+      "source": "item_duration",
+      "transform": "duration"
+    },
+    {
+      "key": "nick_name",
+      "label": "作者昵称",
+      "type": "text",
+      "field_type": 1,
+      "source": "nick_name"
+    },
+    {
+      "key": "avatar_url",
+      "label": "作者头像",
+      "type": "text",
+      "field_type": 1,
+      "source": "avatar_url"
+    },
+    {
+      "key": "fans_cnt",
+      "label": "粉丝数",
+      "type": "number",
+      "field_type": 2,
+      "source": "fans_cnt"
+    },
+    {
+      "key": "play_cnt",
+      "label": "播放量",
+      "type": "number",
+      "field_type": 2,
+      "source": "play_cnt"
+    },
+    {
+      "key": "publish_time",
+      "label": "发布时间",
+      "type": "datetime",
+      "field_type": 5,
+      "source": "publish_time",
+      "transform": "timestamp"
+    },
+    {
+      "key": "score",
+      "label": "热度得分",
+      "type": "number",
+      "field_type": 2,
+      "source": "score"
+    },
+    {
+      "key": "item_url",
+      "label": "作品链接",
+      "type": "text",
+      "field_type": 1,
+      "source": "item_url"
+    },
+    {
+      "key": "like_cnt",
+      "label": "点赞数",
+      "type": "number",
+      "field_type": 2,
+      "source": "like_cnt"
+    },
+    {
+      "key": "follow_cnt",
+      "label": "涨粉数",
+      "type": "number",
+      "field_type": 2,
+      "source": "follow_cnt"
+    },
+    {
+      "key": "follow_rate",
+      "label": "涨粉率",
+      "type": "number",
+      "field_type": 2,
+      "source": "follow_rate"
+    },
+    {
+      "key": "like_rate",
+      "label": "点赞率",
+      "type": "number",
+      "field_type": 2,
+      "source": "like_rate"
+    },
+    {
+      "key": "media_type",
+      "label": "媒体类型",
+      "type": "number",
+      "field_type": 2,
+      "source": "media_type"
+    },
+    {
+      "key": "favorite_id",
+      "label": "收藏ID",
+      "type": "number",
+      "field_type": 2,
+      "source": "favorite_id"
+    },
+    {
+      "key": "is_favorite",
+      "label": "是否收藏",
+      "type": "text",
+      "field_type": 1,
+      "source": "is_favorite"
+    },
+    {
+      "key": "image_cnt",
+      "label": "图片数量",
+      "type": "number",
+      "field_type": 2,
+      "source": "image_cnt"
+    },
+    {
+      "key": "selected_tags",
+      "label": "话题",
+      "type": "text",
+      "field_type": 1,
+      "source": null
+    }
+  ]
+}

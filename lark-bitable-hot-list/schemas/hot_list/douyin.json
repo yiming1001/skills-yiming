@@ -1,0 +1,272 @@
+{
+  "schema_version": "hot-list-runtime.v1",
+  "platform": "douyin",
+  "platform_name": "抖音",
+  "function_type": "hot_list",
+  "function_name": "热榜",
+  "input_schema": {
+    "fields": [
+      {
+        "key": "func",
+        "label": "热榜类型",
+        "type": "select",
+        "required": true,
+        "default": "high_play",
+        "options": [
+          {
+            "value": "high_play",
+            "label": "高完播榜"
+          },
+          {
+            "value": "low_fan",
+            "label": "低粉热榜"
+          },
+          {
+            "value": "total",
+            "label": "综合热榜"
+          },
+          {
+            "value": "high_like",
+            "label": "高点赞榜"
+          },
+          {
+            "value": "high_fan",
+            "label": "高涨粉榜"
+          }
+        ]
+      },
+      {
+        "key": "tags",
+        "label": "垂类标签（可选）",
+        "type": "select",
+        "default": [],
+        "multiple": true,
+        "transform": "douyin_tags_to_value_objects",
+        "options": [
+          {
+            "value": "628",
+            "label": "美食"
+          },
+          {
+            "value": "629",
+            "label": "旅行"
+          },
+          {
+            "value": "634",
+            "label": "休闲娱乐"
+          },
+          {
+            "value": "624",
+            "label": "文化"
+          },
+          {
+            "value": "612",
+            "label": "舞蹈"
+          },
+          {
+            "value": "626",
+            "label": "教育校园"
+          },
+          {
+            "value": "632",
+            "label": "艺术"
+          },
+          {
+            "value": "610",
+            "label": "公益"
+          },
+          {
+            "value": "631",
+            "label": "时尚"
+          },
+          {
+            "value": "635",
+            "label": "汽车"
+          },
+          {
+            "value": "613",
+            "label": "动物"
+          },
+          {
+            "value": "614",
+            "label": "三农"
+          },
+          {
+            "value": "605",
+            "label": "电视剧"
+          },
+          {
+            "value": "607",
+            "label": "二次元"
+          },
+          {
+            "value": "633",
+            "label": "体育"
+          },
+          {
+            "value": "621",
+            "label": "医疗健康"
+          },
+          {
+            "value": "604",
+            "label": "电影"
+          },
+          {
+            "value": "606",
+            "label": "音乐"
+          },
+          {
+            "value": "602",
+            "label": "明星"
+          },
+          {
+            "value": "627",
+            "label": "摄影摄像"
+          },
+          {
+            "value": "611",
+            "label": "随拍"
+          },
+          {
+            "value": "619",
+            "label": "生活家居"
+          },
+          {
+            "value": "641",
+            "label": "颜值"
+          },
+          {
+            "value": "623",
+            "label": "情感"
+          },
+          {
+            "value": "638",
+            "label": "人文社科"
+          },
+          {
+            "value": "616",
+            "label": "财经"
+          },
+          {
+            "value": "615",
+            "label": "科技"
+          },
+          {
+            "value": "622",
+            "label": "科普"
+          },
+          {
+            "value": "625",
+            "label": "职场"
+          },
+          {
+            "value": "603",
+            "label": "综艺"
+          },
+          {
+            "value": "617",
+            "label": "母婴"
+          },
+          {
+            "value": "636",
+            "label": "生活记录"
+          },
+          {
+            "value": "620",
+            "label": "法律"
+          },
+          {
+            "value": "618",
+            "label": "亲子"
+          },
+          {
+            "value": "601",
+            "label": "剧情"
+          },
+          {
+            "value": "608",
+            "label": "游戏"
+          }
+        ]
+      },
+      {
+        "key": "page",
+        "label": "页码",
+        "type": "number",
+        "default": 1,
+        "min": 1
+      },
+      {
+        "key": "page_size",
+        "label": "每页数量",
+        "type": "number",
+        "default": 40,
+        "min": 1,
+        "max": 100
+      },
+      {
+        "key": "data_window",
+        "label": "数据窗口（小时）",
+        "type": "number",
+        "default": 24,
+        "min": 1,
+        "max": 72
+      }
+    ]
+  },
+  "collection_config": {
+    "endpoint_path": "/tools/douyin/fetch_hot_total_high_play_list",
+    "request_method": "POST",
+    "request_payload_mode": "query",
+    "params": [
+      "page",
+      "page_size",
+      "data_window",
+      "func",
+      "tags"
+    ],
+    "string_params": [
+      "page",
+      "page_size",
+      "data_window",
+      "func"
+    ],
+    "omit_empty_params": [
+      "tags"
+    ],
+    "param_transforms": [
+      {
+        "field": "tags",
+        "type": "array_to_value_objects",
+        "number_value": true,
+        "omit_when_empty": true
+      }
+    ],
+    "data_path": "data.data.objs",
+    "pagination": {
+      "type": "page",
+      "param_name": "page",
+      "start_page": 1
+    },
+    "estimate_per_page": 40,
+    "allow_collect_all": true
+  },
+  "execution_defaults": {
+    "collect_mode": "times",
+    "collect_times": 1,
+    "deduplication_enabled": true,
+    "deduplication_field": "item_id",
+    "deduplication_source": "item_id",
+    "deduplication_strategy": "keepOld",
+    "form_data": {
+      "func": "high_play",
+      "page": 1,
+      "page_size": 40,
+      "data_window": 24
+    }
+  },
+  "table_schema_ref": {
+    "schema_id": "douyin_hot_list",
+    "schema_file": "../tables/douyin_hot_list.json"
+  }
+}

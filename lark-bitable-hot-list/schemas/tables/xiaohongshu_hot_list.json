@@ -1,0 +1,71 @@
+{
+  "schema_version": "table-schema.v1",
+  "table_schema_id": "xiaohongshu_hot_list",
+  "platform": "xiaohongshu",
+  "platform_name": "小红书",
+  "function_type": "hot_list",
+  "table_name": "小红书热榜",
+  "target": "personal_bitable",
+  "default_mode": "existing_table",
+  "ensure_table": true,
+  "ensure_fields": true,
+  "field_name_source": "label",
+  "fields": [
+    {
+      "key": "id",
+      "label": "ID",
+      "type": "text",
+      "field_type": 1,
+      "source": "id"
+    },
+    {
+      "key": "title",
+      "label": "标题",
+      "type": "text",
+      "field_type": 1,
+      "source": "title"
+    },
+    {
+      "key": "score",
+      "label": "热度分",
+      "type": "text",
+      "field_type": 1,
+      "source": "score"
+    },
+    {
+      "key": "rank_change",
+      "label": "排名变化",
+      "type": "number",
+      "field_type": 2,
+      "source": "rank_change"
+    },
+    {
+      "key": "type",
+      "label": "类型",
+      "type": "text",
+      "field_type": 1,
+      "source": "type"
+    },
+    {
+      "key": "word_type",
+      "label": "话题标记",
+      "type": "text",
+      "field_type": 1,
+      "source": "word_type"
+    },
+    {
+      "key": "icon",
+      "label": "图标",
+      "type": "text",
+      "field_type": 1,
+      "source": "icon"
+    },
+    {
+      "key": "title_img",
+      "label": "标题图",
+      "type": "text",
+      "field_type": 1,
+      "source": "title_img"
+    }
+  ]
+}
