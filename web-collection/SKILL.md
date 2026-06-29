@@ -259,7 +259,7 @@ Connector authorization defaults:
 
 - The cloud base URL is fixed to `https://i-sync.cn` by default.
 - `defaultCloudDeviceId` and `defaultCloudToken` are optional manual overrides, not first-run questions.
-- `run.sh` first tries environment variables, stored preferences, App state, and connector state.
+- `run.sh` first tries environment variables, stored preferences, App state, `$HOME/.meixi-connector` connector state, and connector bridge state.
 - If no valid connector token is available, `run.sh` prints a website login confirmation link and stops with an authorization-required message.
 - After the user confirms login in the browser, rerun/continue the collection; the Skill should reuse the newly written connector state.
 
@@ -343,27 +343,33 @@ Recommended defaults:
 - 导出去重：`true`
 - 去重保留策略：`keepOld`（保留原始数据）
 
-### Direct default config flow
+### Feishu card config flow
 
-Do not send Feishu cards for default configuration. When the user needs the recommended defaults, send the default values directly in plain text and apply them with the bundled preference helper.
+This skill can expose its default preferences as a compact Feishu form card through its own local scripts.
 
-Default values to send:
+Preferred pieces:
 
-- 运行位置：`cloud`
-- 导出方式：`多维表格`
-- 采集条数：`20`
-- 采集详情：`true`
-- 采集速度：`fast`
-- 导出去重：`true`
-- 去重保留策略：`keepOld`（保留原始数据）
+- `scripts/config_card_spec.js`
+  - outputs the card-form spec for current Web Collection defaults
+- `scripts/apply_config.js`
+  - reads normalized form JSON from stdin and writes the preferences back through `export_preference.sh`
+- `scripts/send_config_card.sh`
+  - builds the card through the local `build_config_card.js` and sends it with `lark-cli im +messages-send`
 
-Recommended apply path:
+Recommended callback deployment:
 
 ```bash
-bash {baseDir}/scripts/export_preference.sh apply-recommended
+CONFIG_WRITE_CMD="node {baseDir}/scripts/apply_config.js" \
+node {baseDir}/scripts/card_callback_server.js
 ```
 
-If the user wants to customize values, ask for the complete set in one message and then persist them through `scripts/export_preference.sh set-key`. Do not introduce a card callback server, interactive card form, or Feishu card delivery step for this configuration flow.
+Recommended send path:
+
+```bash
+bash {baseDir}/scripts/send_config_card.sh --chat-id oc_xxx --as user
+```
+
+Design rule: when sending the card, keep only the form controls and one save button. Do not prepend summary tables, request IDs, or implementation notes.
 
 ## Cloud Mode
 
@@ -591,6 +597,12 @@ The wrapper:
   - never starts a new collection
 - `scripts/export_preference.sh`
   - stores reusable defaults and masks cloud token in human-readable output
+- `scripts/config_card_spec.js`
+  - exports the Web Collection default-config form spec for the local card form runtime
+- `scripts/apply_config.js`
+  - applies normalized Feishu form values back into Web Collection preferences
+- `scripts/send_config_card.sh`
+  - convenience wrapper that generates and sends the compact Feishu config card
 - `references/learning-guide.md`
   - compact guidance for complex requests and asking rules
 

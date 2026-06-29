@@ -165,6 +165,61 @@ process.stdout.write(JSON.stringify({
 '
 }
 
+read_meixi_connector_credentials() {
+  node -e '
+const fs = require("node:fs");
+const os = require("node:os");
+const path = require("node:path");
+
+const readJson = (filePath) => {
+  try { return JSON.parse(fs.readFileSync(filePath, "utf8")); } catch { return null; }
+};
+const readText = (filePath) => {
+  try { return fs.readFileSync(filePath, "utf8").trim(); } catch { return ""; }
+};
+const firstString = (...values) => {
+  for (const value of values) {
+    if (typeof value === "string" && value.trim()) return value.trim();
+  }
+  return "";
+};
+
+const stateDir = process.env.MEIXI_CONNECTOR_STATE_DIR
+  || path.join(os.homedir(), ".meixi-connector");
+const config = readJson(path.join(stateDir, "cloud-config.json")) || {};
+const auth = readJson(path.join(stateDir, "cloud-auth.json")) || {};
+const deviceId = firstString(
+  readText(path.join(stateDir, "device-id.txt")),
+  config.connectorId,
+  config.connector_id,
+  config.deviceId,
+  config.device_id,
+  auth.connectorId,
+  auth.connector_id,
+  auth.deviceId,
+  auth.device_id
+);
+const token = firstString(
+  config.token,
+  config.connectorToken,
+  config.connector_token,
+  config.cloudToken,
+  config.cloud_token,
+  auth.token,
+  auth.connectorToken,
+  auth.connector_token,
+  auth.cloudToken,
+  auth.cloud_token
+);
+process.stdout.write(JSON.stringify({
+  stateDir,
+  deviceId,
+  token,
+  wsUrl: firstString(config.wsUrl, config.ws_url, auth.wsUrl, auth.ws_url),
+}));
+'
+}
+
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --bridge-url)
@@ -209,6 +264,13 @@ app_state_json="$(read_app_state_credentials || printf '{}')"
 app_device_id="$(node -e 'const data=JSON.parse(process.argv[1]||"{}"); process.stdout.write(data.deviceId || "");' "$app_state_json")"
 app_token="$(node -e 'const data=JSON.parse(process.argv[1]||"{}"); process.stdout.write(data.token || "");' "$app_state_json")"
 if emit_credentials "${CLOUD_DEVICE_ID:-$app_device_id}" "${CLOUD_TOKEN:-$app_token}" "app-state"; then
+  exit 0
+fi
+
+meixi_state_json="$(read_meixi_connector_credentials || printf '{}')"
+meixi_device_id="$(node -e 'const data=JSON.parse(process.argv[1]||"{}"); process.stdout.write(data.deviceId || "");' "$meixi_state_json")"
+meixi_token="$(node -e 'const data=JSON.parse(process.argv[1]||"{}"); process.stdout.write(data.token || "");' "$meixi_state_json")"
+if emit_credentials "${CLOUD_DEVICE_ID:-$meixi_device_id}" "${CLOUD_TOKEN:-$meixi_token}" "meixi-connector-state"; then
   exit 0
 fi
 
