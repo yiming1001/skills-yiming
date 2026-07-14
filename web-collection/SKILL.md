@@ -217,6 +217,7 @@ Do not repeat the "what this skill can do" platform/capability explanation in th
    - `local`: troubleshooting/manual fallback; talk to the local bridge directly and only run the local send-command script
 9. In `cloud` mode, do not rewrite the collection payload. Only wrap it in:
    - `device_id`
+   - `product_code` (`meixun_assistant` by default)
    - `action`
    - `payload`
 10. For personal bitable export, do not send `personalSmart` from this skill. Send `personal` plus `deduplication.enabled=true`; the new plugin switches to its smart personal export internally.
@@ -380,6 +381,7 @@ Cloud responsibilities:
 - call `/api/v1/connector/cloud/dispatch`
 - authenticate with `Authorization: Bearer <user_api_key>`
 - include `device_id`
+- include `product_code` (`meixun_assistant` by default)
 - keep the collection body unchanged inside `payload`
 - enforce a strict cloud payload template before dispatch to avoid missing fields
   - default fallback when missing: `maxItems=20`, `mode=search`, `interval=300`, `fetchDetail=true`, `detailSpeed=fast`

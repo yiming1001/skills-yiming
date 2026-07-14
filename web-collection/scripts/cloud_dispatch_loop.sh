@@ -12,6 +12,7 @@ Options:
   --base-url <url>          Cloud API base URL, e.g. http://127.0.0.1:8016
   --device-id <id>          Target connector device_id
   --token <token>           User API key used as Bearer token
+  --product-code <code>     default: meixun_assistant
   --action <name>           default: collect
   --poll-sec <n>            default: 3
   --timeout-sec <n>         default: 1200
@@ -76,11 +77,23 @@ api_get_optional() {
 api_post_json() {
   local path="$1"
   local body="$2"
-  curl -fsS -X POST \
+  local raw http_code response_body
+  raw="$(curl -sS -w $'\n%{http_code}' -X POST \
     -H "Authorization: Bearer $TOKEN" \
     -H 'Content-Type: application/json' \
     -d "$body" \
-    "$BASE_URL$path"
+    "$BASE_URL$path")"
+  http_code="${raw##*$'\n'}"
+  response_body="${raw%$'\n'*}"
+  if [[ "$http_code" == 2* ]]; then
+    printf '%s' "$response_body"
+    return 0
+  fi
+  printf '[web-collection] cloud POST %s failed HTTP %s\n' "$path" "$http_code" >&2
+  if [[ -n "$response_body" ]]; then
+    printf '[web-collection] cloud error body: %s\n' "$response_body" >&2
+  fi
+  return 1
 }
 
 extract_command_id() {
@@ -177,6 +190,7 @@ PAYLOAD_FILE=""
 BASE_URL=""
 DEVICE_ID=""
 TOKEN=""
+PRODUCT_CODE="${WEB_COLLECTION_PRODUCT_CODE:-meixun_assistant}"
 ACTION="collect"
 POLL_SEC="3"
 TIMEOUT_SEC="1200"
@@ -201,6 +215,10 @@ while [[ $# -gt 0 ]]; do
       ;;
     --token)
       TOKEN="${2:-}"
+      shift 2
+      ;;
+    --product-code)
+      PRODUCT_CODE="${2:-meixun_assistant}"
       shift 2
       ;;
     --action)
@@ -232,6 +250,7 @@ require_bin node
 [[ -n "$BASE_URL" ]] || die "--base-url is required"
 [[ -n "$DEVICE_ID" ]] || die "--device-id is required"
 [[ -n "$TOKEN" ]] || die "--token is required"
+[[ -n "$PRODUCT_CODE" ]] || die "--product-code is required"
 
 if [[ -n "$PAYLOAD_FILE" ]]; then
   [[ -f "$PAYLOAD_FILE" ]] || die "payload file not found: $PAYLOAD_FILE"
@@ -251,10 +270,11 @@ fi
 
 dispatch_body="$(node -e '
 const deviceId = process.argv[1];
-const action = process.argv[2];
-const payload = JSON.parse(process.argv[3]);
-process.stdout.write(JSON.stringify({ device_id: deviceId, action, payload }));
-' "$DEVICE_ID" "$ACTION" "$PAYLOAD_JSON")"
+const productCode = process.argv[2];
+const action = process.argv[3];
+const payload = JSON.parse(process.argv[4]);
+process.stdout.write(JSON.stringify({ device_id: deviceId, product_code: productCode, action, payload }));
+' "$DEVICE_ID" "$PRODUCT_CODE" "$ACTION" "$PAYLOAD_JSON")"
 
 dispatch_json="$(api_post_json "/api/v1/connector/cloud/dispatch" "$dispatch_body")"
 command_id="$(extract_command_id "$dispatch_json")"
