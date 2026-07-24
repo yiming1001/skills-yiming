@@ -1,5 +1,5 @@
 ## Description: <br>
-通过云端连接器优先执行浏览器插件数据采集，也可回退到本地连接器；适用于抖音、TikTok、小红书、Amazon、Bilibili 的采集任务，以及 web-collection 首次上手、配置、付费使用说明和 QA 排障。 <br>
+通过云端连接器优先执行浏览器插件数据采集，也可回退到本地连接器；同时可查询、定位和分析插件下载到本机的采集素材。 <br>
 
 This skill is ready for commercial/non-commercial use. <br>
 
@@ -11,7 +11,7 @@ MIT-0 <br>
 
 
 ## Use Case: <br>
-Developers, operators, and external users use this skill to configure and run browser-extension web collection workflows for Douyin, TikTok, Xiaohongshu, Amazon, and Bilibili. It routes first-time setup, paid access, troubleshooting, local connector, cloud connector, export, and recovery flows. <br>
+Developers, operators, and external users use this skill to configure and run browser-extension web collection workflows, then find and compare downloaded local materials through the authenticated connector API. <br>
 
 ### Deployment Geography for Use: <br>
 Global <br>
@@ -36,7 +36,7 @@ Mitigation: Review the skill and connector behavior before installation or deplo
 **Output Type(s):** [Markdown, Shell commands, Configuration instructions, Guidance] <br>
 **Output Format:** [Markdown with inline shell commands and concise collection status summaries] <br>
 **Output Parameters:** [1D] <br>
-**Other Properties Related to Output:** [May include collection mode, command status, export status, collected count, bitable table links, CSV export confirmation, and short analysis.] <br>
+**Other Properties Related to Output:** [May include collection mode, command status, export status, collected count, material task/record IDs, validated local file paths, and short analysis.] <br>
 
 ## Skill Version(s): <br>
 1.2.8 (source: server release metadata) <br>

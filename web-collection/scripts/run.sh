@@ -27,6 +27,7 @@ FIELDS_JSON=""
 FILTERS_JSON=""
 DEDUPLICATION=""
 DEDUPLICATION_STRATEGY=""
+PRODUCT_CODE="${WEB_COLLECTION_PRODUCT_CODE:-}"
 
 CONNECTION_MODE="${WEB_COLLECTION_CONNECTION_MODE:-cloud}"
 BRIDGE_URL="${WEB_COLLECTION_BRIDGE_URL:-http://127.0.0.1:19820}"
@@ -59,6 +60,8 @@ Common examples:
   run.sh --platform amazon --keyword "Chinese antiques" --max-items 20 --ensure-bridge
   run.sh --platform amazon --method productLink --link "https://www.amazon.com/dp/B0..." --ensure-bridge
   run.sh --platform amazon --method productReview --link "https://www.amazon.com/dp/B0..." --filters-json '{"sortBy":"recent"}' --ensure-bridge
+  run.sh --platform taobao --keyword "收纳盒" --max-items 20 --ensure-bridge
+  run.sh --platform temu --method productReview --link "https://www.temu.com/..." --max-items 20 --ensure-bridge
   run.sh --platform bilibili --keyword "古董" --max-items 20 --ensure-bridge
   run.sh --platform bilibili --method videoInfo --link "https://www.bilibili.com/video/BV..." --ensure-bridge
   run.sh --keyword "小龙虾" --export-target csv --max-items 20 --ensure-bridge
@@ -90,6 +93,7 @@ Options:
   --cloud-base-url <url>         optional override, same as WEB_COLLECTION_CLOUD_BASE_URL
   --cloud-device-id <id>         optional override, same as WEB_COLLECTION_CLOUD_DEVICE_ID
   --cloud-token <token>          optional override, same as WEB_COLLECTION_CLOUD_TOKEN
+  --product-code <code>          optional override; inferred from --platform by default
   --ensure-bridge
   --bridge-cmd '<cmd>'
 
@@ -99,6 +103,7 @@ Env:
   WEB_COLLECTION_CLOUD_BASE_URL   optional override, default: https://i-sync.cn
   WEB_COLLECTION_CLOUD_DEVICE_ID  optional, target connector device_id
   WEB_COLLECTION_CLOUD_TOKEN      optional, bearer token for cloud dispatch
+  WEB_COLLECTION_PRODUCT_CODE     optional product code override
   WEB_COLLECTION_BRIDGE_CMD       optional bridge start command
 EOF
 }
@@ -215,6 +220,10 @@ while [[ $# -gt 0 ]]; do
     --cloud-token)
       CLOUD_TOKEN="${2:-}"
       HAS_CLOUD_TOKEN_ARG="true"
+      shift 2
+      ;;
+    --product-code)
+      PRODUCT_CODE="${2:-}"
       shift 2
       ;;
     --ensure-bridge)
@@ -418,6 +427,7 @@ tiktok|userVideo|links|video|userVideo|||
 tiktok|tiktokComment|links|comment|video_detail|||
 tiktok|tiktokCreatorKeyword|keywords|account|search|||
 tiktok|tiktokCreatorLink|links|account|account|||
+tiktok|videoInfo|links|video|video_detail|||
 xiaohongshu|keywordSearch|keywords|note|search|||
 xiaohongshu|creatorNote|links|note|account|||
 xiaohongshu|creatorLink|links|account|account|||
@@ -431,6 +441,23 @@ bilibili|keywordSearch|keywords|video|search|||
 bilibili|videoInfo|links|video|video_detail|||
 bilibili|creatorVideo|links|video|account|||
 bilibili|bilibiliComment|links|comment|video_detail|||
+bilibili|creatorKeyword|keywords|account|search|||
+bilibili|creatorLink|links|account|account|||
+taobao|keywordSearch|keywords|product|search|||
+taobao|productReview|links|comment|product_detail|||
+jd|keywordSearch|keywords|product|search|||
+jd|productReview|links|comment|product_detail|||
+1688|keywordSearch|keywords|product|search|||
+1688|productReview|links|comment|product_detail|||
+temu|keywordSearch|keywords|product|search|||
+temu|productReview|links|comment|product_detail|||
+aliexpress|keywordSearch|keywords|product|search|||
+shopee|keywordSearch|keywords|product|search|||
+shopee|productReview|links|comment|product_detail|||
+shein|keywordSearch|keywords|product|search|||
+shein|productReview|links|comment|product_detail|||
+ebay|keywordSearch|keywords|product|search|||
+ebay|productReview|links|comment|product_detail|||
 EOF
 }
 
@@ -441,7 +468,36 @@ tiktok|keywordSearch
 xiaohongshu|keywordSearch
 amazon|keywordSearch
 bilibili|keywordSearch
+taobao|keywordSearch
+jd|keywordSearch
+1688|keywordSearch
+temu|keywordSearch
+aliexpress|keywordSearch
+shopee|keywordSearch
+shein|keywordSearch
+ebay|keywordSearch
 EOF
+}
+
+resolve_product_code() {
+  local inferred=""
+  case "$PLATFORM" in
+    douyin|tiktok|xiaohongshu|bilibili)
+      inferred="meixun_assistant"
+      ;;
+    amazon|taobao|jd|1688|temu|aliexpress|shopee|shein|ebay)
+      inferred="shopping_assistant"
+      ;;
+    *)
+      die "unsupported platform for product-code resolution: $PLATFORM"
+      ;;
+  esac
+
+  if [[ -z "$PRODUCT_CODE" ]]; then
+    PRODUCT_CODE="$inferred"
+  elif [[ "$PRODUCT_CODE" != "$inferred" ]]; then
+    die "product code $PRODUCT_CODE does not match platform=$PLATFORM (expected $inferred)"
+  fi
 }
 
 lookup_route_config() {
@@ -734,6 +790,7 @@ apply_stored_preferences
 [[ -n "$DEDUPLICATION" ]] || DEDUPLICATION="true"
 [[ -n "$DEDUPLICATION_STRATEGY" ]] || DEDUPLICATION_STRATEGY="keepOld"
 CONNECTION_MODE="$(normalize_connection_mode "$CONNECTION_MODE")"
+resolve_product_code
 ensure_cloud_authorization
 run_preflight_check
 
@@ -788,12 +845,13 @@ run_collect_cloud() {
     --payload "$payload_json" \
     --base-url "$cloud_base_url" \
     --device-id "$cloud_device_id" \
-    --token "$cloud_token"
+    --token "$cloud_token" \
+    --product-code "$PRODUCT_CODE"
 }
 
 if [[ "$CONNECTION_MODE" == "cloud" ]]; then
   ensure_cloud_preferences
-  echo "[web-collection] mode=cloud base=$CLOUD_BASE_URL device=$CLOUD_DEVICE_ID" >&2
+  echo "[web-collection] mode=cloud product=$PRODUCT_CODE base=$CLOUD_BASE_URL device=$CLOUD_DEVICE_ID" >&2
   run_collect_cloud "$CLOUD_BASE_URL" "$CLOUD_DEVICE_ID" "$CLOUD_TOKEN" "$PAYLOAD_JSON"
 else
   echo "[web-collection] mode=local bridge=$BRIDGE_URL" >&2

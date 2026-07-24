@@ -1,6 +1,6 @@
 ---
 name: web-collection
-description: 通过云端连接器优先执行浏览器插件数据采集，也可回退到本地连接器；适用于抖音、TikTok、小红书、Amazon、Bilibili 的采集任务，以及 web-collection 首次上手、配置、付费使用说明和 QA 排障。
+description: 通过云端连接器优先执行浏览器插件数据采集，也可回退到本地连接器；查询并分析已下载的本地采集素材；适用于抖音、TikTok、小红书、Bilibili，以及 Amazon、淘宝、京东、1688、Temu、AliExpress、Shopee、SHEIN、eBay 的采集任务、素材查找与比较，以及 web-collection 首次上手、配置、付费使用说明和 QA 排障。
 ---
 
 # Web Collection
@@ -10,8 +10,16 @@ Use this skill for browser-extension collection tasks on:
 - Douyin
 - TikTok
 - Xiaohongshu
-- Amazon
 - Bilibili
+- Amazon
+- Taobao
+- JD
+- 1688
+- Temu
+- AliExpress
+- Shopee
+- SHEIN
+- eBay
 
 ## Online Documentation Routing
 
@@ -138,13 +146,15 @@ Use this flow before a user's first collection or whenever setup status is uncle
 
 Use this when the user asks what the skill is, what it can do, or how to use it in general, but has not explicitly asked to start setup/configuration.
 
-- Briefly explain that Web Collection is a browser-extension data collection skill for Douyin, TikTok, Xiaohongshu, Amazon, and Bilibili.
+- Briefly explain that Web Collection is a browser-extension data collection skill for Douyin, TikTok, Xiaohongshu, Bilibili, Amazon, Taobao, JD, 1688, Temu, AliExpress, Shopee, SHEIN, and eBay.
 - Mention what it can collect in the intro, using a compact platform list when helpful:
   - Douyin: video keyword search, creator search, video comments, video details.
-  - TikTok: keyword search, user videos, comments, creator search.
+  - TikTok: keyword search, video details, user videos, comments, creator search.
   - Xiaohongshu: note keyword search, creator notes, note comments, note details.
   - Amazon: product keyword search, product details, product reviews.
-  - Bilibili: video keyword search, video details, creator videos, comments.
+  - Bilibili: video keyword search, video details, creator search/profile, creator videos, comments.
+  - Taobao, JD, 1688, Temu, Shopee, SHEIN, eBay: product keyword search and product reviews.
+  - AliExpress: product keyword search.
 - Mention that results can be exported to Feishu bitable or CSV.
 - Provide the demo scenarios / example collection scenes link:
   `https://vcn5grhrq8y0.feishu.cn/wiki/GO11wlXkriSwNakXrt2ck0GanEe`
@@ -217,10 +227,24 @@ Do not repeat the "what this skill can do" platform/capability explanation in th
    - `local`: troubleshooting/manual fallback; talk to the local bridge directly and only run the local send-command script
 9. In `cloud` mode, do not rewrite the collection payload. Only wrap it in:
    - `device_id`
-   - `product_code` (`meixun_assistant` by default)
+   - `product_code` (automatically resolved from the platform: media platforms use `meixun_assistant`; commerce platforms use `shopping_assistant`)
    - `action`
    - `payload`
 10. For personal bitable export, do not send `personalSmart` from this skill. Send `personal` plus `deduplication.enabled=true`; the new plugin switches to its smart personal export internally.
+
+## Local Material Discovery
+
+Use the local material flow when the user asks for downloaded materials, the latest collected batch, a specific collected item, or a comparison such as “这十个素材哪个更好”. Material discovery is always local even when collection originally used cloud dispatch. The loopback Connector and extension exchange metadata and local paths only; never upload material files to the cloud service.
+
+1. Run `bash {baseDir}/scripts/materials.sh search --status completed --format json` before asking the user to locate files manually.
+2. Interpret “刚才 / 这批 / 本次” as the first task in the newest-first response. If several tasks plausibly match an explicit request, show concise task choices before analyzing.
+3. Use `--query`, `--platform`, `--task-id`, `--record-id`, and `--kind` to narrow the result. Use `show --task-id <id>` for the complete task.
+4. Only open assets with `exists=true` and a non-empty `filePath`. Keep `taskId`, `recordId`, title, kind, and path in analysis notes so follow-up requests remain resolvable.
+5. Send images to the host's visual inspection tool. For video, use native video input when available; otherwise use `ffmpeg` to extract representative frames into a temporary directory without modifying the source file. If neither is available, analyze the cover and metadata and state the limitation.
+6. If the connector returns plugin offline, ask the user to open Chrome and ensure the extension is running, then retry. Do not switch this query to cloud mode and do not ask the user to copy the admin token.
+7. If `/api/materials` returns 404, identify it as an outdated or not-yet-restarted Connector runtime. Ask the user to update or restart Connector, then retry. If status reports `Unsupported product`, identify a Connector/plugin handshake version mismatch and require both sides to be updated or reloaded.
+8. Never scan the Connector installation or state directory for media files. Connector stores service state only; material paths come from Chrome download metadata returned by the extension API.
+9. Summarize findings instead of dumping raw catalog JSON. Include the winning/selected record identifiers and local paths when the user needs to reuse them.
 
 ## First-Time Setup
 
@@ -381,7 +405,7 @@ Cloud responsibilities:
 - call `/api/v1/connector/cloud/dispatch`
 - authenticate with `Authorization: Bearer <user_api_key>`
 - include `device_id`
-- include `product_code` (`meixun_assistant` by default)
+- include platform-matched `product_code`: `meixun_assistant` for Douyin, TikTok, Xiaohongshu, and Bilibili; `shopping_assistant` for Amazon and all commerce platforms
 - keep the collection body unchanged inside `payload`
 - enforce a strict cloud payload template before dispatch to avoid missing fields
   - default fallback when missing: `maxItems=20`, `mode=search`, `interval=300`, `fetchDetail=true`, `detailSpeed=fast`
@@ -597,6 +621,9 @@ The wrapper:
 - `scripts/reexport_task.sh`
   - re-exports cached records from a previous connector task id
   - never starts a new collection
+- `scripts/materials.sh`
+  - lists, searches, and shows downloaded material tasks through the authenticated local connector API
+  - resolves the existing local admin token automatically and never starts a collection
 - `scripts/export_preference.sh`
   - stores reusable defaults and masks cloud token in human-readable output
 - `scripts/config_card_spec.js`
@@ -639,6 +666,25 @@ bash {baseDir}/scripts/run.sh \
   --ensure-bridge
 ```
 
+Taobao product review collection:
+
+```bash
+bash {baseDir}/scripts/run.sh \
+  --platform taobao \
+  --method productReview \
+  --link "https://item.taobao.com/item.htm?id=..." \
+  --ensure-bridge
+```
+
+AliExpress keyword search:
+
+```bash
+bash {baseDir}/scripts/run.sh \
+  --platform aliexpress \
+  --keyword "wireless headphones" \
+  --ensure-bridge
+```
+
 Bilibili keyword search:
 
 ```bash
@@ -646,6 +692,19 @@ bash {baseDir}/scripts/run.sh \
   --platform bilibili \
   --keyword "古董" \
   --ensure-bridge
+```
+
+Latest completed material tasks:
+
+```bash
+bash {baseDir}/scripts/materials.sh list --status completed --format summary
+```
+
+Search and inspect one task:
+
+```bash
+bash {baseDir}/scripts/materials.sh search --query "AI" --status completed
+bash {baseDir}/scripts/materials.sh show --task-id "<taskId>"
 ```
 
 ## Platform Defaults
@@ -657,14 +716,30 @@ Wrapper defaults:
 - `xiaohongshu` => `keywordSearch`
 - `amazon` => `keywordSearch`
 - `bilibili` => `keywordSearch`
+- `taobao` => `keywordSearch`
+- `jd` => `keywordSearch`
+- `1688` => `keywordSearch`
+- `temu` => `keywordSearch`
+- `aliexpress` => `keywordSearch`
+- `shopee` => `keywordSearch`
+- `shein` => `keywordSearch`
+- `ebay` => `keywordSearch`
 
 Supported methods:
 
 - `douyin`: `videoKeyword`, `creatorKeyword`, `creatorLink`, `creatorVideo`, `videoComment`, `videoInfo`, `videoLink`
-- `tiktok`: `keywordSearch`, `userVideo`, `tiktokComment`, `tiktokCreatorKeyword`, `tiktokCreatorLink`
+- `tiktok`: `keywordSearch`, `videoInfo`, `userVideo`, `tiktokComment`, `tiktokCreatorKeyword`, `tiktokCreatorLink`
 - `xiaohongshu`: `keywordSearch`, `creatorNote`, `creatorLink`, `creatorKeyword`, `noteLink`, `noteComment`
 - `amazon`: `keywordSearch`, `productLink`, `productReview`
-- `bilibili`: `keywordSearch`, `videoInfo`, `creatorVideo`, `bilibiliComment`
+- `bilibili`: `keywordSearch`, `videoInfo`, `creatorKeyword`, `creatorLink`, `creatorVideo`, `bilibiliComment`
+- `taobao`: `keywordSearch`, `productReview`
+- `jd`: `keywordSearch`, `productReview`
+- `1688`: `keywordSearch`, `productReview`
+- `temu`: `keywordSearch`, `productReview`
+- `aliexpress`: `keywordSearch`
+- `shopee`: `keywordSearch`, `productReview`
+- `shein`: `keywordSearch`, `productReview`
+- `ebay`: `keywordSearch`, `productReview`
 
 ## Closed Loop
 
@@ -728,3 +803,7 @@ When `bitable` export is expected but no table link exists, explicitly say expor
   - use stop + retry, or `--force-stop-before-start`
 - long record output hiding key fields
   - trust the connector loop's compact summary output rather than raw task JSON
+- material query reports plugin offline
+  - open Chrome, ensure the extension is running and connected, then rerun `scripts/materials.sh`; local material paths are not queried through cloud dispatch
+- a returned asset has `exists=false`
+  - treat the local file as unavailable and do not attempt to open the stale path

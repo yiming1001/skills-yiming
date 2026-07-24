@@ -1,6 +1,6 @@
 # web-collection
 
-`web-collection` is a browser-extension data collection skill for Douyin, TikTok, Xiaohongshu, Amazon, and Bilibili.
+`web-collection` is a browser-extension data collection and local-material discovery skill for Douyin, TikTok, Xiaohongshu, Bilibili, Amazon, Taobao, JD, 1688, Temu, AliExpress, Shopee, SHEIN, and eBay.
 
 It prioritizes the Agent-led connector flow, with local connector execution as a troubleshooting fallback. The skill covers first-time onboarding, connector and bitable setup, website login confirmation for connector authorization, closed-loop execution, export handling, and troubleshooting.
 
@@ -14,6 +14,7 @@ It prioritizes the Agent-led connector flow, with local connector execution as a
 - `scripts/collect_and_export_loop.sh`
 - `scripts/export_preference.sh`
 - `scripts/reexport_task.sh`
+- `scripts/materials.sh`
 - `references/learning-guide.md`
 - `assets/`
 
@@ -44,6 +45,15 @@ Use the wrapper script:
 
 ```bash
 bash scripts/run.sh --platform douyin --keyword "AI"
+bash scripts/run.sh --platform jd --keyword "wireless charger"
+bash scripts/run.sh --platform shopee --method productReview --link "https://shopee.../..."
+```
+
+Query the latest downloaded materials through the authenticated local connector:
+
+```bash
+bash scripts/materials.sh list --status completed --format summary
+bash scripts/materials.sh search --query "AI" --status completed
 ```
 
 The wrapper reads stored preferences, resolves connector authorization from existing state or a website login confirmation link, runs preflight checks, chooses exactly one internal execution mode, and dispatches through either the cloud connector loop or the local connector loop.

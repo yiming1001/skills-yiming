@@ -20,6 +20,16 @@ Use one unified rule set:
 9. If the exact filter shape is unclear, check `GET /api/filters` first before guessing.
 10. Deduplication fields are resolved by the connector/plugin, never by this skill.
 11. Personal bitable export must remain `exportMode=personal`; deduplication is what makes the new plugin choose its smart personal export internally.
+12. Local material discovery must use `scripts/materials.sh`; it never falls back to cloud dispatch, never uploads material files, and only trusts assets with `exists=true`.
+13. A 404 from `/api/materials` means the active Connector runtime is outdated or has not been restarted; `Unsupported product` means the Connector/plugin handshake versions do not match. Never scan Connector directories for media because downloaded paths are owned by Chrome and returned by the extension.
+
+## Material Discovery And Analysis
+
+- Use `materials.sh list` for recent task choices, `search` for title/author/platform matching, and `show --task-id` for full task details.
+- Resolve “刚才 / 这批 / 本次” to the newest returned material task unless the user names another platform, title, or time range.
+- Preserve task ID and record ID in the working notes before opening files.
+- Open only validated `filePath` values. Images can be inspected directly. For videos, prefer native video input; otherwise extract representative frames with `ffmpeg` into a temporary directory.
+- When the plugin is offline, ask the user to open Chrome and reconnect the extension. Do not ask for the local admin token and do not query local paths through the cloud connector.
 
 ## Asking Rules
 

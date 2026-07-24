@@ -102,7 +102,7 @@ validate_key_value() {
       ;;
     defaultPlatform)
       case "$value" in
-        douyin|tiktok|xiaohongshu|amazon|bilibili) ;;
+        douyin|tiktok|xiaohongshu|amazon|bilibili|taobao|jd|1688|temu|aliexpress|shopee|shein|ebay) ;;
         *)
           echo "invalid platform: $value" >&2
           exit 1
@@ -400,7 +400,7 @@ Usage:
 Supported keys:
   defaultConnectionMode local | cloud
   defaultExportMode   csv | bitable
-  defaultPlatform     douyin | tiktok | xiaohongshu | amazon | bilibili
+  defaultPlatform     douyin | tiktok | xiaohongshu | bilibili | amazon | taobao | jd | 1688 | temu | aliexpress | shopee | shein | ebay
   defaultMaxItems     integer
   defaultFetchDetail  true | false
   defaultDetailSpeed  slow | medium | fast
